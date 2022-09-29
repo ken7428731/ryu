@@ -29,6 +29,7 @@ from ryu.lib.packet import tcp
 
 from scada_log.write_log_txt import write_log
 from scada_log.epoch_to_datetime import epoch_to_datetime
+from ryu.lib.packet import modbus_tcp
 
 class SimpleSwitch13(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -206,6 +207,59 @@ class SimpleSwitch13(app_manager.RyuApp):
                 print('self.modbus_tcp_information='+str(self.modbus_tcp_information))
                 self.write_log_object.write_log_txt('self.modbus_tcp_information='+str(self.modbus_tcp_information))
 
+            #------------------------------------解析Modbus TCP(應用層)的部分 ------------------------------------#
+            if self.pkt.__len__()==4 and (self.tcp_src_port==502 or self.tcp_dst_port==502):
+                self.write_log_object.write_log_txt("---------modbus tcp-------------")
+                #錄製modbus tcp 的封包
+                self.packet_save_object.write_packet_timestamp_to_txt(self.packet_timestamp)
+                self.packet_save_object.write_packet_to_txt(self.pkt)
+                
+                print("__iter__="+str(self.pkt.__iter__()))
+                print("__len__="+str(self.pkt.__len__()))
+                print("__getitem__="+str(self.pkt.__getitem__(3)))
+                self.write_log_object.write_log_txt("__iter__="+str(self.pkt.__iter__()))
+                self.write_log_object.write_log_txt("__len__="+str(self.pkt.__len__()))
+                self.write_log_object.write_log_txt("__getitem__="+str(self.pkt.__getitem__(3)))
+                
+                mb=modbus_tcp.modbus_tcp()
+                mb.get_modbus_tcp(self.tcp_src_port,self.tcp_dst_port,self.pkt.__getitem__(3))
+                self.write_log_object.write_log_txt("****************")
+                self.write_log_object.write_log_txt("mb.t_id="+str(mb.t_id))
+                self.write_log_object.write_log_txt("mb.p_id="+str(mb.p_id))
+                self.write_log_object.write_log_txt("mb.modbus_len="+str(mb.modbus_len))
+                self.write_log_object.write_log_txt("mb.u_id="+str(mb.u_id))
+                if self.tcp_dst_port==502: #request 
+                    print("*****request >>>> *****")
+                    print("mb.fun_code="+str(mb.fun_code))
+                    self.write_log_object.write_log_txt("*****request >>>> *****")
+                    self.write_log_object.write_log_txt("mb.fun_code="+str(mb.fun_code))
+                    if mb.fun_code==5:
+                        print("mb.reference_number="+str(mb.reference_number))
+                        print("mb.modbus_5_data="+str(mb.modbus_5_data))
+                        self.write_log_object.write_log_txt("mb.reference_number="+str(mb.reference_number))
+                        self.write_log_object.write_log_txt("mb.modbus_5_data="+str(mb.modbus_5_data))
+                    else:
+                        print("mb.reference_number="+str(mb.reference_number))
+                        print("mb.Bit_Count="+str(mb.Bit_Count))
+                        print("mb.data_lenth="+str(mb.data_lenth))
+                        self.write_log_object.write_log_txt("mb.reference_number="+str(mb.reference_number))
+                        self.write_log_object.write_log_txt("mb.Bit_Count="+str(mb.Bit_Count))                    
+                        self.write_log_object.write_log_txt("mb.data_lenth="+str(mb.data_lenth))
+                elif self.tcp_src_port==502: # response
+                    print("*****response <<<<< *****")
+                    print("mb.fun_code="+str(mb.fun_code))
+                    self.write_log_object.write_log_txt("*****response <<<<< *****")
+                    self.write_log_object.write_log_txt("mb.fun_code="+str(mb.fun_code))
+                    if mb.fun_code==5:
+                        print("mb.reference_number="+str(mb.reference_number))
+                        print("mb.modbus_5_data="+str(mb.modbus_5_data))
+                        self.write_log_object.write_log_txt("mb.reference_number="+str(mb.reference_number))
+                        self.write_log_object.write_log_txt("mb.modbus_5_data="+str(mb.modbus_5_data))
+                    else:
+                        print("mb.byte_count="+str(mb.byte_count))
+                        print("mb.modbus_data="+str(mb.modbus_data))
+                        self.write_log_object.write_log_txt("mb.byte_count="+str(mb.byte_count))
+                        self.write_log_object.write_log_txt("mb.modbus_data="+str(mb.modbus_data))
 
         dpid = format(datapath.id, "d").zfill(16)
         self.mac_to_port.setdefault(dpid, {})
