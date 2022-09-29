@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import os
-path ='/home/mnlab/Desktop/ryu/ryu/app/scada_log/log'
+path ='/home/mnlab/Desktop/ryu/ryu/app/scada_log/'
 filepath = path+'log/'
-filename= '20220323_2_log.txt'
-filename2= '202203191_2_log.txt'
+filename= '20220419_log.txt'
+filename2= '20220419_simple_switch_13_log.txt'
 class write_log():
     # def __init__(self):
         # self.delete_old_log_file()
@@ -17,6 +17,11 @@ class write_log():
 
     def write_log_txt(self, data):
         with open(filepath+filename,'a') as f:
+            # time.sleep(0.02)
+            f.write(str(data)+'\n')
+            f.close()
+    def write_log_txt_2(self, data):
+        with open(filepath+filename2,'a') as f:
             # time.sleep(0.02)
             f.write(str(data)+'\n')
             f.close()

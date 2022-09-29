@@ -21,6 +21,7 @@ from ryu.ofproto import ofproto_v1_3
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ether_types
+from scada_log.write_log_txt import write_log
 
 
 class SimpleSwitch13(app_manager.RyuApp):
@@ -29,6 +30,10 @@ class SimpleSwitch13(app_manager.RyuApp):
     def __init__(self, *args, **kwargs):
         super(SimpleSwitch13, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
+
+        self.write_log_object=write_log()
+        self.write_log_object.delete_old_log_file()
+        self.write_log_object.delete_old_log_file_2()
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -71,10 +76,12 @@ class SimpleSwitch13(app_manager.RyuApp):
             self.logger.debug("packet truncated: only %s of %s bytes",
                               ev.msg.msg_len, ev.msg.total_len)
         msg = ev.msg
+        self.write_log_object.write_log_txt_2("ev.msg="+str(msg))
         datapath = msg.datapath
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         in_port = msg.match['in_port']
+        print('in_port='+str(in_port))
 
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocols(ethernet.ethernet)[0]
