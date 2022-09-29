@@ -17,7 +17,7 @@
 #  可讓使用中文註解
 
 #--------參考網址-------------------------#
-# https://stackoverflow.com/questions/49971882/delete-flows-matching-specific-cookie-openflow-1-3-5-spec-support-by-openvswit
+#[1] https://stackoverflow.com/questions/49971882/delete-flows-matching-specific-cookie-openflow-1-3-5-spec-support-by-openvswit
 # https://gist.github.com/aweimeow/d3662485aa224d298e671853aadb2d0f 的基本教學
 
 
@@ -51,17 +51,18 @@ RULE_6_TABLE=6
 SCADA_Information_List=[]
 temp_SCADA_Information_List=[]
 
-Modbus_Tcp_Packet_In_Information_Table=[]
-Modbus_Tcp_Connection_Information_Table=[]
-Modbus_Tcp_Syn_Information_Table=[]
+Modbus_Tcp_Packet_In_Information_Table=[] #rule 1
+Modbus_Tcp_Syn_Information_Table=[] #rule 2
+Modbus_Tcp_Connection_Information_Table=[] #rule 3
+
 Device_IP_List=[]
 
 Factory_Block_Table=[]
 
 rule_table_2_set_list=[]
 rule_2_full_state=0
-modbus_tcp_function_list=[] #判斷封包的功能是否一樣
-modbus_tcp_function_data_list=[] #判斷封包的值是否超過範圍
+modbus_tcp_function_list=[] #rule 4 #判斷封包的功能是否一樣
+modbus_tcp_function_data_list=[] #rule 5 #判斷封包的值是否超過範圍
 flow_entry_list=[]
 temp_flow_entry_list=[]
 flow_entry_list_json=[]
@@ -326,7 +327,8 @@ class SimpleSwitch15(app_manager.RyuApp):
                     temp.append(element)
             temp_flow_entry_list=temp
             self.write_log_object.write_log_txt('add_flow(rule)='+str(temp_flow_entry_list))
-        
+    # def get_all_flow(self):
+    #     temp
         
         
     def delete_flow(self,datapath,table_id, priority, match, inst=0, actions=None): #刪除Flow (可以查看[1]的參考網址)
@@ -398,7 +400,7 @@ class SimpleSwitch15(app_manager.RyuApp):
             self.temp_json['rule']=rule
             self.temp_json['one_ip']=one_ip
             self.temp_json['two_ip']=two_ip
-            self.temp_json['actions']=actions
+            self.temp_json['inst']=inst
             flow_entry_list_json.append(self.temp_json)
         if rule==4:
             self.temp_json['rule']=rule
@@ -414,6 +416,12 @@ class SimpleSwitch15(app_manager.RyuApp):
     def Set_change_Device_Information(self,before_ip,after_ip):
         global SCADA_Information_List
         global flow_entry_list_json
+        global Modbus_Tcp_Packet_In_Information_Table #rule 1
+        global Modbus_Tcp_Syn_Information_Table #rule 2
+        global Modbus_Tcp_Connection_Information_Table #rule 3
+        global modbus_tcp_function_list #rule 4 #判斷封包的功能是否一樣
+        global modbus_tcp_function_data_list #rule 5 #判斷封包的值是否超過範圍
+        global Factory_Block_Table #是否允許將ip阻擋
         for i in range(len(flow_entry_list_json)):
             if flow_entry_list_json[i]['one_ip']==before_ip:
                 self.datapath=flow_entry_list_json[i]['datapath']
@@ -429,10 +437,53 @@ class SimpleSwitch15(app_manager.RyuApp):
                     self.temp_after_match_2=self.parser.OFPMatch(eth_type=0x0800,ipv4_src=after_ip)
                     self.inst=flow_entry_list_json[i]['inst']
                     del flow_entry_list_json[i]
+                    if len(Modbus_Tcp_Packet_In_Information_Table)>0:
+                        for j in range(len(Modbus_Tcp_Packet_In_Information_Table)):
+                            if Modbus_Tcp_Packet_In_Information_Table[j]['Src_Address']==before_ip:
+                                Modbus_Tcp_Packet_In_Information_Table[j]['Src_Address']=after_ip
+                            elif Modbus_Tcp_Packet_In_Information_Table[j]['Dst_Address']==before_ip:
+                                Modbus_Tcp_Packet_In_Information_Table[j]['Dst_Address']=after_ip
+                        self.write_log_object.write_log_txt('Set_change_Device_Information_Modbus_Tcp_Packet_In_Information_Table='+str(Modbus_Tcp_Packet_In_Information_Table))
                     self.add_flow(self.datapath,self.table_id,self.priority,self.temp_after_match_1,inst=self.inst)
                     self.add_flow(self.datapath,self.table_id,self.priority,self.temp_after_match_2,inst=self.inst)
                     self.Record_set_flow_entry(self.datapath,self.table_id,self.priority,0,after_ip,inst=self.inst)
-                # if flow_entry_list_json[i]['rule']==1:
+                    
+            if (flow_entry_list_json[i]['rule']==3) and (flow_entry_list_json[i]['two_ip']==before_ip):
+                self.datapath=flow_entry_list_json[i]['datapath']
+                self.parser=self.datapath.ofproto_parser
+                self.table_id=flow_entry_list_json[i]['table_id']
+                self.priority=flow_entry_list_json[i]['priority']
+                self.before_one_ip=flow_entry_list_json[i]['one_ip']
+                self.before_two_ip=flow_entry_list_json[i]['two_ip']
+                self.temp_before_match_1= self.parser.OFPMatch(eth_type=0x0800,ip_proto=0x6,ipv4_src=self.before_one_ip,ipv4_dst=self.before_two_ip)
+                self.temp_before_match_2= self.parser.OFPMatch(eth_type=0x0800,ip_proto=0x6,ipv4_src=self.before_two_ip,ipv4_dst=self.before_one_ip)
+                self.delete_flow(self.datapath,self.table_id,self.priority,self.temp_before_match_1)
+                self.delete_flow(self.datapath,self.table_id,self.priority,self.temp_before_match_2)
+                self.after_one_ip=flow_entry_list_json[i]['one_ip']
+                self.after_two_ip=after_ip
+                self.temp_after_match_1= self.parser.OFPMatch(eth_type=0x0800,ip_proto=0x6,ipv4_src=self.after_one_ip,ipv4_dst=self.after_two_ip)
+                self.temp_after_match_2= self.parser.OFPMatch(eth_type=0x0800,ip_proto=0x6,ipv4_src=self.after_two_ip,ipv4_dst=self.after_one_ip)
+                self.inst=flow_entry_list_json[i]['inst']
+                del flow_entry_list_json[i]
+                self.add_flow(self.datapath,self.table_id,self.priority,self.temp_after_match_1,inst=self.inst)
+                self.add_flow(self.datapath,self.table_id,self.priority,self.temp_after_match_2,inst=self.inst)
+                self.Record_set_flow_entry(self.datapath,self.table_id,self.priority,3,self.after_one_ip,self.after_two_ip,inst=self.inst)
+
+    # def Set_Change_global_list(self,rule,before_ip,after_ip):
+    #     global Modbus_Tcp_Packet_In_Information_Table #rule 1
+    #     global Modbus_Tcp_Syn_Information_Table #rule 2
+    #     global Modbus_Tcp_Connection_Information_Table #rule 3
+    #     global modbus_tcp_function_list #rule 4 #判斷封包的功能是否一樣
+    #     global modbus_tcp_function_data_list #rule 5 #判斷封包的值是否超過範圍
+    #     global Factory_Block_Table #是否允許將ip阻擋
+    #     if rule==1:
+    #         self.temp_flag=0
+    #         for i in range(len(Modbus_Tcp_Packet_In_Information_Table)):
+    #             if Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address']==before_ip:
+    #                 Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address']=after_ip
+    #             elif Modbus_Tcp_Packet_In_Information_Table[i]['Dst_Address']==before_ip:
+    #                 Modbus_Tcp_Packet_In_Information_Table[i]['Dst_Address']=after_ip
+
 
 
 
@@ -592,7 +643,7 @@ class SimpleSwitch15(app_manager.RyuApp):
             #                                 ofproto.OFPCML_NO_BUFFER)]
             # self.add_flow(datapath,RULE_2_TABLE, 0, match,0, actions)
             self.default_match_flow(datapath,ofproto,parser,RULE_2_TABLE)
-        #--政策2-----------------------------------------------------#
+
         if pkt.get_protocols(tcp.tcp) and (self.table_id==RULE_1_TABLE or self.table_id==RULE_2_TABLE):
             if len(Device_IP_List)>0:
                 for i in range(len(Device_IP_List)):
@@ -713,7 +764,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                             self.table_2_inst_rule_1= [parser.OFPInstructionGotoTable(RULE_3_TABLE)] #Go to The Table 3
                             self.add_flow(datapath,RULE_2_TABLE, self.priority, self.table_2_match_1, self.table_2_inst_rule_1,state='rule') #在table 2比對到 往table 3送
                             self.add_flow(datapath,RULE_2_TABLE, self.priority, self.table_2_match_2, self.table_2_inst_rule_1,state='rule') #在table 2比對到 往table 3送
-                            self.Record_set_flow_entry(datapath,RULE_2_TABLE,self.priority,3,Modbus_Tcp_Connection_Information_Table[i]['Src_Address'],Modbus_Tcp_Connection_Information_Table[i]['Dst_Address'],actions=self.table_2_inst_rule_1)
+                            self.Record_set_flow_entry(datapath,RULE_2_TABLE,self.priority,3,Modbus_Tcp_Connection_Information_Table[i]['Src_Address'],Modbus_Tcp_Connection_Information_Table[i]['Dst_Address'],inst=self.table_2_inst_rule_1)
                             self.default_match_flow(datapath,ofproto,parser,RULE_3_TABLE)
                             rule_table_2_set_list[i]['Set_flow_stat']='True'
                 # self.write_log_object.write_log_txt('Modbus_Tcp_Connect_Count_Table[i]["Connect_Count"]='+str(Modbus_Tcp_Connect_Count_Table[i]['Connect_Count']))
@@ -723,9 +774,8 @@ class SimpleSwitch15(app_manager.RyuApp):
                     self.table_2_action_3=[]
                     self.add_flow(datapath,RULE_2_TABLE, self.priority, self.table_2_match_3,0,self.table_2_action_3) #比對不到的全部丟掉
                     rule_2_full_state=1
-        #-----------------計算modbus tcp 封包是否請求一樣(政策4)--------------------------#
+        #-----------------modbus tcp------------------------
         if pkt.get_protocols(tcp.tcp) and pkt.__len__()==4 and self.tcp.has_flags(tcp.TCP_PSH,tcp.TCP_ACK) and (self.table_id==RULE_2_TABLE or self.table_id==RULE_3_TABLE) :
-            
             mb=modbus_tcp.modbus_tcp()
             mb.get_modbus_tcp(self.tcp_src_port,self.tcp_dst_port,pkt.__getitem__(3))
             self.write_log_object.write_log_txt("****************")
@@ -807,10 +857,10 @@ class SimpleSwitch15(app_manager.RyuApp):
             if len(modbus_tcp_function_list)>0:
                 for i in range(len(modbus_tcp_function_list)):
                     if len(modbus_tcp_function_list[i]['function_code'])==4:
-                        self.temp=Counter(modbus_tcp_function_list[i]['function_code'])
+                        self.Moubus_Tcp_Function_Count_Table=Counter(modbus_tcp_function_list[i]['function_code'])
                         for j in range(15):
-                            if self.temp[j]>=3:
-                                self.priority=30
+                            if self.Moubus_Tcp_Function_Count_Table[j]>=3:
+                                self.priority=20
                                 self.table_3_match_1= parser.OFPMatch(eth_type=0x0800,ipv4_src=modbus_tcp_function_list[i]['Src_Address'])
                                 self.table_3_actions=[]
                                 for k in range(len(Factory_Block_Table)):
@@ -838,7 +888,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                                         break
 
                                 if k==3:
-                                    self.priority=30
+                                    self.priority=20
                                     self.table_3_match_2= parser.OFPMatch(eth_type=0x0800,ipv4_src=modbus_tcp_function_data_list[i]['Src_Address'])
                                     self.table_3_actions=[]
                                     for k in range(len(Factory_Block_Table)):
