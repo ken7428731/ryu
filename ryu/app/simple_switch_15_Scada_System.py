@@ -1,3 +1,4 @@
+
 # Copyright (C) 2011 Nippon Telegraph and Telephone Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +16,9 @@
 
 # -*- coding: utf-8 -*-
 #  可讓使用中文註解
+#--------參考網址-------------------------#
+# https://stackoverflow.com/questions/49971882/delete-flows-matching-specific-cookie-openflow-1-3-5-spec-support-by-openvswit
+# https://gist.github.com/aweimeow/d3662485aa224d298e671853aadb2d0f 的基本教學
 
 from ryu.base import app_manager
 from ryu.controller import ofp_event
@@ -28,6 +32,8 @@ from ryu.lib.packet import ether_types
 from scada_log.write_log_txt import write_log
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import tcp,udp
+from SCADA_Device_Information.Load_SCADA_Information_Data import Load_Data
+import threading
 
 RULE_1_TABLE=1
 RULE_2_TABLE=2
@@ -35,6 +41,14 @@ RULE_3_TABLE=3
 RULE_4_TABLE=4
 RULE_5_TABLE=5
 RULE_6_TABLE=6
+SCADA_Information_List=[]
+
+def Load_SCADA_Information(): #讀取Device_Information.json資訊
+    global SCADA_Information_List
+    Load_SCADA_Information_Object=Load_Data()
+    while True:
+        SCADA_Information_List=Load_SCADA_Information_Object.Load_Information()
+        # print('SCADA_Information_List='+str(SCADA_Information_List))
 
 
 class SimpleSwitch15(app_manager.RyuApp):
@@ -46,6 +60,11 @@ class SimpleSwitch15(app_manager.RyuApp):
 
         self.write_log_object=write_log()
         self.write_log_object.delete_old_log_file()
+
+        # self.load_Scada_thread=[]
+        thread=threading.Thread(target=Load_SCADA_Information) #一直讀取 Device_Information.json，如果有做更改並在全域提醒
+        thread.start()
+        
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -102,8 +121,9 @@ class SimpleSwitch15(app_manager.RyuApp):
         table_1_actions_0 = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
         self.add_flow(datapath,RULE_1_TABLE, 0, table_1_match_0,0, table_1_actions_0)
+        
+        #移除 一開始新增的 所有封包當阻擋的flow
         match = parser.OFPMatch()
-        # actions=[]
         self.delete_flow(datapath,0,65535,match,0)
 
 
@@ -123,9 +143,8 @@ class SimpleSwitch15(app_manager.RyuApp):
         mod = parser.OFPFlowMod(cookie=0x01,datapath=datapath, table_id=table_id,priority=priority,command=ofproto.OFPFC_ADD,
                                 match=match, instructions=inst)
         print('add_flow='+str(mod))
-         # 把定義好的 FlowEntry 送給 Switch
-        datapath.send_msg(mod)
-    def delete_flow(self,datapath,table_id, priority, match, inst=0, actions=None):
+        datapath.send_msg(mod)# 把定義好的 FlowEntry 送給 Switch
+    def delete_flow(self,datapath,table_id, priority, match, inst=0, actions=None): #刪除Flow (可以查看[1]的參考網址)
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
 
@@ -134,12 +153,12 @@ class SimpleSwitch15(app_manager.RyuApp):
         #                                          actions)]
         # else:
         #     inst=inst
+
+        # 刪除FLOW 。 ofproto.OFPFC_DELETE_STRICT 為匹配(match與priority)到規則後，進行刪除
         mod=parser.OFPFlowMod(cookie=0x01,datapath=datapath, table_id=table_id,command=ofproto.OFPFC_DELETE_STRICT,
                               out_port=ofproto.OFPP_ANY,out_group=ofproto.OFPG_ANY,
                               priority=priority,match=match)
-        print('delete_flow='+str(mod))
         result=datapath.send_msg(mod)
-        print('delete_flow_result='+str(result))
 
 
 
