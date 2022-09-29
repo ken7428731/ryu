@@ -30,6 +30,7 @@ from ryu.ofproto import ofproto_v1_5
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ether_types
+from ryu.lib.packet import lldp
 
 from scada_log.write_log_txt import write_log
 from ryu.lib.packet import ipv4
@@ -40,6 +41,7 @@ import threading
 from ryu.lib.packet import modbus_tcp
 from ryu.lib import hub
 import copy
+
 
 RULE_0_TABLE=0
 RULE_1_TABLE=1
@@ -69,16 +71,19 @@ temp_flow_entry_list=[]
 flow_entry_list_json=[]
 
 first_switch_features=[]
+switch_topology=[]
+ip_switch_topology=[]
 
 
 
 class SimpleSwitch15(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_5.OFP_VERSION]
-    
+    link = []
 
     def __init__(self, *args, **kwargs):
         super(SimpleSwitch15, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
+        
         self.ip_to_port = {}
 
         self.write_log_object=write_log()
@@ -523,9 +528,11 @@ class SimpleSwitch15(app_manager.RyuApp):
         self.write_log_object.write_log_txt('first_switch_features='+str(first_switch_features))
 
         #--------新增一筆所有封包當阻擋的flow -------------#
-        start_default_match = parser.OFPMatch()
-        start_default_actions=[]
-        self.add_flow(datapath,0,65535,start_default_match,0,start_default_actions)
+        # start_default_match = parser.OFPMatch()
+        # start_default_actions=[]
+        # self.add_flow(datapath,0,65535,start_default_match,0,start_default_actions)
+
+        self.send_port_stats_request(datapath) #LLDP傳送消息
 
         
         # t=threading.Thread(target=self.Load_SCADA_Information) #讀取 Device_Information.json，如果有做更改並在全域提醒
@@ -596,10 +603,97 @@ class SimpleSwitch15(app_manager.RyuApp):
         # self.add_flow(datapath,RULE_1_TABLE, 0, table_1_match_0,0, table_1_actions_0)
         
         #移除 一開始新增的 所有封包當阻擋的flow
-        match = parser.OFPMatch()
-        self.delete_flow(datapath,0,65535,match,0)
+        # match = parser.OFPMatch()
+        # self.delete_flow(datapath,0,65535,match,0)
         print('tempp')
+    
+    #------------- LLDP 函式(Start) --------------------------------------------------#
+    def send_port_stats_request(self, datapath):
+        ofp = datapath.ofproto
+        ofp_parser = datapath.ofproto_parser
+        req = ofp_parser.OFPPortDescStatsRequest(datapath, 0, ofp.OFPP_ANY)
+        datapath.send_msg(req)
 
+
+    @set_ev_cls(ofp_event.EventOFPPortDescStatsReply, MAIN_DISPATCHER)
+    def port_stats_reply_handler(self, ev):
+        # CTR ask SW port 
+        msg = ev.msg
+        datapath = msg.datapath
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        # LLDP packet to controller
+        for stat in ev.msg.body:
+            if stat.port_no < ofproto.OFPP_MAX:
+                self.send_lldp_packet(datapath, stat.port_no, stat.hw_addr)
+
+    def send_lldp_packet(self, datapath, port_no, hw_addr):
+        ofproto = datapath.ofproto
+        ofp_parser = datapath.ofproto_parser
+
+        pkt = packet.Packet()
+        pkt.add_protocol(ethernet.ethernet(ethertype=ether_types.ETH_TYPE_LLDP,src=hw_addr ,dst=lldp.LLDP_MAC_NEAREST_BRIDGE))
+
+        #chassis_id = lldp.ChassisID(subtype=lldp.ChassisID.SUB_LOCALLY_ASSIGNED, chassis_id=str(datapath.id))
+        chassis_id = lldp.ChassisID(subtype=lldp.ChassisID.SUB_LOCALLY_ASSIGNED, chassis_id=str(datapath.id).encode('utf-8'))
+        #port_id = lldp.PortID(subtype=lldp.PortID.SUB_LOCALLY_ASSIGNED, port_id=str(port))
+        port_id = lldp.PortID(subtype=lldp.PortID.SUB_LOCALLY_ASSIGNED, port_id=str(port_no).encode('utf-8'))
+        #port_id = lldp.PortID(subtype=lldp.PortID.SUB_LOCALLY_ASSIGNED, port_id=b'1/3')
+        ttl = lldp.TTL(ttl=1)
+        end = lldp.End()
+        tlvs = (chassis_id,port_id,ttl,end)
+        pkt.add_protocol(lldp.lldp(tlvs))
+        pkt.serialize()
+        # self.logger.info("packet-out %s" % pkt)
+        data = pkt.data
+        match = ofp_parser.OFPMatch(in_port=ofproto.OFPP_CONTROLLER)
+        actions = [ofp_parser.OFPActionOutput(port=port_no)]
+        out = ofp_parser.OFPPacketOut(datapath=datapath,
+                                  buffer_id=ofproto.OFP_NO_BUFFER,
+                                  match=match,
+                                  actions=actions,
+                                  data=data)
+        datapath.send_msg(out)
+
+    def switch_lldp_list(self,dpid,in_port):
+        global switch_topology
+        self.temp={}
+        self.temp['dpid']=dpid
+        self.temp['in_port']=in_port
+        if len(switch_topology)>0:
+            a=[temp for temp in switch_topology if (temp['dpid']==dpid) and (temp['in_port']==in_port)] 
+            if len(a)<=0:
+                switch_topology.append(self.temp)        
+        else:
+            switch_topology.append(self.temp)
+        self.write_log_object.write_log_txt('switch_lldp_list='+str(switch_topology))
+    
+    # Link two switch
+    def switch_link(self,s_a,s_b):
+        return s_a + '<--->' + s_b
+            
+    def handle_lldp(self,dpid,in_port,lldp_pkt):
+        lldp_dpid=lldp_pkt.tlvs[0].chassis_id
+        lldp_in_port=lldp_pkt.tlvs[1].port_id
+        self.write_log_object.write_log_txt('dpid='+str(dpid))
+        self.write_log_object.write_log_txt('in_port='+str(in_port))
+        self.write_log_object.write_log_txt('lldp_dpid='+str(lldp_dpid))
+        self.write_log_object.write_log_txt('lldp_in_port='+str(lldp_in_port))
+
+        self.switch_lldp_list(int(dpid),int(in_port))
+        self.switch_lldp_list(int(lldp_dpid.decode('utf-8')),int(lldp_in_port.decode('utf-8')))
+
+        switch_a = 'switch'+str(dpid)+', port'+str(in_port)
+        switch_b = 'switch'+lldp_dpid.decode('utf-8')+', port'+lldp_in_port.decode('utf-8')
+        link = self.switch_link(switch_a,switch_b)
+
+        # Check the switch link is existed
+        if not any(self.switch_link(switch_b,switch_a) == search for search in self.link):
+            self.link.append(link)
+
+        print(self.link)
+
+    #------------- LLDP 函式(End) --------------------------------------------------#
 
 
     def add_flow(self, datapath,table_id, priority, match, inst=0, actions=None,state=None):
@@ -691,7 +785,7 @@ class SimpleSwitch15(app_manager.RyuApp):
         msg = ev.msg
         # self.write_log_object.write_log_txt("ev.msg="+str(msg))
         datapath = msg.datapath
-        self.write_log_object.write_log_txt('datapath='+str(datapath))
+        # self.write_log_object.write_log_txt('datapath='+str(datapath))
         dpid = datapath.id # Switch 的 datapath id (獨一無二的 ID)
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
@@ -700,10 +794,19 @@ class SimpleSwitch15(app_manager.RyuApp):
 
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocols(ethernet.ethernet)[0]
+        # pkt_ethernet = pkt.get_protocol(ethernet.ethernet)
 
         if eth.ethertype == ether_types.ETH_TYPE_LLDP:
-            # ignore lldp packet
-            return
+            pkt_lldp = pkt.get_protocol(lldp.lldp)
+            if pkt_lldp:
+                # self.handle_lldp(dpid,in_port,pkt_lldp)
+                print('aaaaa==')
+                t = threading.Thread(target = self.handle_lldp(dpid, in_port, pkt_lldp))
+                t.start()
+                match = parser.OFPMatch(in_port=1)
+                # self.delete_flow()
+                return
+        
         dst = eth.dst
         src = eth.src
 
@@ -1122,17 +1225,21 @@ class SimpleSwitch15(app_manager.RyuApp):
         #     mac_to_port = {'1': {'AA:BB:CC:DD:EE:FF': 2}, '2': {}}
         self.mac_to_port.setdefault(dpid, {})
         self.ip_to_port.setdefault(dpid,{})
+        
+        
 
-        self.logger.info("packet in %s %s %s %s", dpid, src, dst, in_port)
+        # self.logger.info("packet in %s %s %s %s", dpid, src, dst, in_port)
 
         # learn a mac address to avoid FLOOD next time.
         # 我們擁有來源端 MAC 與 in_port 了，因此可以學習到 src MAC 要往 in_port 送
         self.mac_to_port[dpid][src] = in_port
-        if pkt.get_protocols(ipv4.ipv4):
+        if pkt.get_protocols(ipv4.ipv4): # 紀錄 如果不是 OvS連接OvS時的實體port的封包，就做紀錄
             self.ipv4=pkt.get_protocols(ipv4.ipv4)[0]
             self.ipv4_src = self.ipv4.src
             self.ipv4_dst = self.ipv4.dst
-            self.ip_to_port[dpid][self.ipv4_src]=in_port
+            for i in range(len(switch_topology)):
+                if  (dpid==switch_topology[i]['dpid'])and (in_port!=switch_topology[i]['in_port']):
+                    self.ip_to_port[dpid][self.ipv4_src]=in_port
 
         # 如果 目的端 MAC 在 mac_to_port 表中的話，就直接告訴 Switch 送到 out_port
         # 否則就請 Switch 用 Flooding 送出去
@@ -1142,8 +1249,12 @@ class SimpleSwitch15(app_manager.RyuApp):
             out_port = ofproto.OFPP_FLOOD
         self.write_log_object.write_log_txt('self.mac_to_port='+str(self.mac_to_port))
         self.write_log_object.write_log_txt('self.ip_to_port='+str(self.ip_to_port))
-        # if self.ipv4_dst in self.ip_to_port[dpid]:
-        #     out_port = self.mac_to_port[dpid][self.ipv4_dst]
+        if pkt.get_protocols(ipv4.ipv4): #複寫 封包的下車出口
+            self.ipv4=pkt.get_protocols(ipv4.ipv4)[0]
+            self.ipv4_src = self.ipv4.src
+            self.ipv4_dst = self.ipv4.dst
+            if self.ipv4_dst in self.ip_to_port[dpid]:
+                out_port = self.ip_to_port[dpid][self.ipv4_dst]
 
         # 把剛剛的 out_port 作成這次封包的處理動作
         actions = [parser.OFPActionOutput(out_port)]
