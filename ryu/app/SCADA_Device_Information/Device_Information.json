@@ -8,8 +8,8 @@
           "PLC_Device_GPIO_Open_State":[
             {"model":"Coil","Start":0,"End":11},
             {"model":"M","Start":8193,"End":8195},
-            {"model":"D","Start":0,"End":0},
-            {"model":"X_Input","Start":0,"End":0}
+            {"model":"D","Start":0,"End":1},
+            {"model":"X_Input","Start":0,"End":2}
           ]
         }
     ],

@@ -20,6 +20,7 @@
 # https://stackoverflow.com/questions/49971882/delete-flows-matching-specific-cookie-openflow-1-3-5-spec-support-by-openvswit
 # https://gist.github.com/aweimeow/d3662485aa224d298e671853aadb2d0f 的基本教學
 
+
 from typing import Counter
 from ryu.base import app_manager
 from ryu.controller import ofp_event
@@ -37,6 +38,7 @@ from SCADA_Device_Information.Load_SCADA_Information_Data import Load_Data
 from scada_log.epoch_to_datetime import epoch_to_datetime
 import threading
 from ryu.lib.packet import modbus_tcp
+from ryu.lib import hub
 import copy
 
 RULE_0_TABLE=0
@@ -47,6 +49,7 @@ RULE_4_TABLE=4
 RULE_5_TABLE=5
 RULE_6_TABLE=6
 SCADA_Information_List=[]
+temp_SCADA_Information_List=[]
 
 Modbus_Tcp_Packet_In_Information_Table=[]
 Modbus_Tcp_Connection_Information_Table=[]
@@ -57,14 +60,22 @@ Factory_Block_Table=[]
 
 rule_table_2_set_list=[]
 rule_2_full_state=0
-modbus_tcp_function_list=[]
-modbus_tcp_function_data_list=[]
-
-
+modbus_tcp_function_list=[] #判斷封包的功能是否一樣
+modbus_tcp_function_data_list=[] #判斷封包的值是否超過範圍
+flow_entry_list=[]
+temp_flow_entry_list=[]
+flow_entry_list_json=[]
+# def test():
+#     while True:
+#         print('test666')
 
 
 class SimpleSwitch15(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_5.OFP_VERSION]
+
+    # thread=threading.Thread(target=test)
+    # thread.start()
+    
 
     def __init__(self, *args, **kwargs):
         super(SimpleSwitch15, self).__init__(*args, **kwargs)
@@ -73,44 +84,118 @@ class SimpleSwitch15(app_manager.RyuApp):
         self.write_log_object=write_log()
         self.write_log_object.delete_old_log_file()
 
-        self.Load_SCADA_Information_Object=Load_Data()
+        
         self.datetime_object=epoch_to_datetime()
+
+        self.load_Device_Information_thread=hub.spawn(self.Load_SCADA_Information) #建立執行續(讀取設定檔)
+        self.load_Device_Information_thread_2=hub.spawn(self.Set_Device_Information_List) #建立執行續(類似白名單感覺)
 
     def Load_SCADA_Information(self): #讀取Device_Information.json資訊
         global SCADA_Information_List
-        # while True:
-        temp=self.Load_SCADA_Information_Object.Load_Information()
-        for i in range(len(temp['PLC_Device'])):
-            for j in range(len(temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'])):
-                self.tempp={}
-                if temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['model']=='Coil':
-                    self.tempp['model']=1
-                    self.tempp['Start']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
-                    self.tempp['Range']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['End']-temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
-                    if self.tempp['Range']>0:
-                        self.tempp['Range']=self.tempp['Range']-1
-                elif temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['model']=='M':
-                    self.tempp['model']=1
-                    self.tempp['Start']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
-                    self.tempp['Range']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['End']-temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
-                    if self.tempp['Range']>0:
-                        self.tempp['Range']=self.tempp['Range']+1
-                elif temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['model']=='X_Input':
-                    self.tempp['model']=2
-                    self.tempp['Start']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
-                    self.tempp['Range']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['End']-temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
-                    if self.tempp['Range']>0:
-                        self.tempp['Range']=self.tempp['Range']+1
-                elif temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['model']=='D':
-                    self.tempp['model']=3
-                    self.tempp['Start']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
-                    self.tempp['Range']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['End']-temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
-                    if self.tempp['Range']>0:
-                        self.tempp['Range']=self.tempp['Range']+1
-                temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]=self.tempp
-        SCADA_Information_List=temp
+        global temp_SCADA_Information_List
+        temp_list=[]
+        self.Load_SCADA_Information_Object=Load_Data()
+        while True:
+            temp=self.Load_SCADA_Information_Object.Load_Information()
+            for i in range(len(temp['PLC_Device'])):
+                for j in range(len(temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'])):
+                    self.tempp={}
+                    if temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['model']=='Coil':
+                        self.tempp['model']=1
+                        self.tempp['Start']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
+                        self.tempp['Range']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['End']-temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
+                        if self.tempp['Range']>0:
+                            self.tempp['Range']=self.tempp['Range']-1
+                    elif temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['model']=='M':
+                        self.tempp['model']=1
+                        self.tempp['Start']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
+                        self.tempp['Range']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['End']-temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
+                        if self.tempp['Range']>0:
+                            self.tempp['Range']=self.tempp['Range']+1
+                    elif temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['model']=='X_Input':
+                        self.tempp['model']=2
+                        self.tempp['Start']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
+                        self.tempp['Range']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['End']-temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
+                        if self.tempp['Range']>0:
+                            self.tempp['Range']=self.tempp['Range']+1
+                    elif temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['model']=='D':
+                        self.tempp['model']=3
+                        self.tempp['Start']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
+                        self.tempp['Range']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['End']-temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
+                        if self.tempp['Range']>0:
+                            self.tempp['Range']=self.tempp['Range']+1
+                    temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]=self.tempp
+            SCADA_Information_List=temp
+            
+            if len(temp_SCADA_Information_List)>0:
+                if temp_SCADA_Information_List!=SCADA_Information_List:
+                    if len(SCADA_Information_List['HMI_Device_IP'])>=len(temp_SCADA_Information_List['HMI_Device_IP']):
+                        self.ttemp={}
+                        self.ttemp['HMI_Device_IP']=[]
+                        for i in range(len(SCADA_Information_List['HMI_Device_IP'])):
+                            a=[temp for temp in temp_SCADA_Information_List['HMI_Device_IP'] if temp==SCADA_Information_List['HMI_Device_IP'][i]] 
+                            if len(a)<=0:
+                                self.ttemp['HMI_Device_IP'].append(SCADA_Information_List['HMI_Device_IP'][i])
+                                
+                        temp_list.append(self.ttemp)
+                    elif len(SCADA_Information_List['HMI_Device_IP'])<len(temp_SCADA_Information_List):
+                        self.ttemp={}
+                        self.ttemp['HMI_Device_IP']=[]
+                        for i in range(len(temp_SCADA_Information_List['HMI_Device_IP'])):
+                            a=[temp for temp in SCADA_Information_List['HMI_Device_IP'] if temp==temp_SCADA_Information_List['HMI_Device_IP'][i]] 
+                            if len(a)<=0:
+                                self.ttemp['HMI_Device_IP'].append(temp_SCADA_Information_List['HMI_Device_IP'][i])
+                        # temp_list.append(self.ttemp['HMI_Device_IP'])
+                        temp_list.append(self.ttemp)
 
-            # print('SCADA_Information_List='+str(SCADA_Information_List))
+                    if len(SCADA_Information_List['PLC_Device'])>=len(temp_SCADA_Information_List['PLC_Device']):
+                        self.ttemp={}
+                        self.ttemp['PLC_Device']=[]
+                        for i in range(len(SCADA_Information_List['PLC_Device'])):
+                            a=[temp for temp in temp_SCADA_Information_List['PLC_Device'] if temp['IP']==SCADA_Information_List['PLC_Device'][i]['IP']] 
+                            if len(a)<=0:
+                                self.tttemp={}
+                                self.tttemp['IP']=SCADA_Information_List['PLC_Device'][i]['IP']
+                                self.ttemp['PLC_Device'].append(self.tttemp)
+                                self.Set_change_Device_Information(temp_SCADA_Information_List['PLC_Device'][i]['IP'],SCADA_Information_List['PLC_Device'][i]['IP'])
+                        temp_list.append(self.ttemp)
+                    elif len(SCADA_Information_List['PLC_Device'])<len(temp_SCADA_Information_List['PLC_Device']):
+                        self.ttemp={}
+                        self.ttemp['PLC_Device']=[]
+                        for i in range(len(temp_SCADA_Information_List['PLC_Device'])):
+                            a=[temp for temp in SCADA_Information_List['PLC_Device'] if temp['IP']==temp_SCADA_Information_List['PLC_Device'][i]['IP']] 
+                            if len(a)<=0:
+                                self.tttemp={}
+                                self.tttemp['IP']=temp_SCADA_Information_List['PLC_Device'][i]['IP']
+                                self.ttemp['PLC_Device'].append(self.tttemp)
+                        temp_list.append(self.ttemp)
+
+                    self.write_log_object.write_log_txt('Device_information_is_change='+str(temp_list))
+
+
+
+
+                    temp_SCADA_Information_List=copy.deepcopy(SCADA_Information_List)       
+
+
+                    
+                    # if len(SCADA_Information_List['Facyory_Device_IP'])>0:
+                    #     for i in range(len(SCADA_Information_List['Facyory_Device_IP'])):
+                    #         Device_IP_List.append(SCADA_Information_List['Facyory_Device_IP'][i])
+                    # if len(SCADA_Information_List['Allow_Service_IP'])>0:
+                    #     for i in range(len(SCADA_Information_List['Allow_Service_IP'])):
+                    #         Device_IP_List.append(SCADA_Information_List['Allow_Service_IP'][i])
+                    
+            else:
+                temp_SCADA_Information_List=copy.deepcopy(SCADA_Information_List)
+            
+            self.write_log_object.write_log_txt('Load_SCADA_Information='+str(SCADA_Information_List))
+            temp_list=[]
+            hub.sleep(1)
+    # def change_flow_entry(self,before_ip,after_ip):
+    #     global temp_flow_entry_list
+    #     for i in range(len(temp_flow_entry_list)):
+
 
         
 
@@ -129,10 +214,10 @@ class SimpleSwitch15(app_manager.RyuApp):
         self.add_flow(datapath,0,65535,start_default_match,0,start_default_actions)
 
         
-        t=threading.Thread(target=self.Load_SCADA_Information) #讀取 Device_Information.json，如果有做更改並在全域提醒
-        t.start()
-        self.Set_Device_Information_List()
-        self.write_log_object.write_log_txt('SCADA_Information_List='+str(SCADA_Information_List))
+        # t=threading.Thread(target=self.Load_SCADA_Information) #讀取 Device_Information.json，如果有做更改並在全域提醒
+        # t.start()
+        # self.Set_Device_Information_List()
+        # self.write_log_object.write_log_txt('SCADA_Information_List='+str(SCADA_Information_List))
 
 
         # install table-miss flow entry
@@ -158,9 +243,10 @@ class SimpleSwitch15(app_manager.RyuApp):
                 self.priority=10
                 self.table_0_match_1= parser.OFPMatch(eth_type=0x0800,ipv4_dst=SCADA_Information_List['PLC_Device'][i]['IP'])
                 self.table_0_inst_rule_1= [parser.OFPInstructionGotoTable(RULE_1_TABLE)] #Go to The Table 1
-                self.add_flow(datapath,0, self.priority, self.table_0_match_1, self.table_0_inst_rule_1) #在table 0比對到 往table 1送
+                self.add_flow(datapath,0, self.priority, self.table_0_match_1, self.table_0_inst_rule_1,state='rule') #在table 0比對到 往table 1送
+                self.Record_set_flow_entry(datapath,0,self.priority,0,SCADA_Information_List['PLC_Device'][i]['IP'],inst=self.table_0_inst_rule_1) #rule 0
                 self.table_0_match_1= parser.OFPMatch(eth_type=0x0800,ipv4_src=SCADA_Information_List['PLC_Device'][i]['IP'])
-                self.add_flow(datapath,0, self.priority, self.table_0_match_1, self.table_0_inst_rule_1) #在table 0比對到 往table 1送
+                self.add_flow(datapath,0, self.priority, self.table_0_match_1, self.table_0_inst_rule_1,state='rule') #在table 0比對到 往table 1送
             match = parser.OFPMatch()
             actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                             ofproto.OFPCML_NO_BUFFER)]
@@ -202,9 +288,13 @@ class SimpleSwitch15(app_manager.RyuApp):
 
 
 
-    def add_flow(self, datapath,table_id, priority, match, inst=0, actions=None):
+    def add_flow(self, datapath,table_id, priority, match, inst=0, actions=None,state=None):
+        global flow_entry_list
+        global temp_flow_entry_list  
         # 取得與 Switch 使用的 IF 版本 對應的 OF 協定及 parser
         ofproto = datapath.ofproto
+        # print('type datapath='+str(type(datapath)))
+        # print(repr(datapath))
         parser = datapath.ofproto_parser
         # Instruction 是定義當封包滿足 match 時，所要執行的動作
         # 因此把 action 以 OFPInstructionActions 包裝起來
@@ -216,8 +306,29 @@ class SimpleSwitch15(app_manager.RyuApp):
         # FlowMod Function 可以讓我們對 Switch 寫入由我們所定義的 Flow Entry
         mod = parser.OFPFlowMod(cookie=0x01,datapath=datapath, table_id=table_id,priority=priority,command=ofproto.OFPFC_ADD,
                                 match=match, instructions=inst)
-        print('add_flow='+str(mod))
-        datapath.send_msg(mod)# 把定義好的 FlowEntry 送給 Switch
+                                     
+        flow_entry_list.append(str(mod))
+        if len(flow_entry_list)>0 :
+            temp=[]
+            for element in flow_entry_list:
+                if element not in temp:
+                    temp.append(element)
+                    # print('add_flow='+str(mod))
+                    datapath.send_msg(mod)# 把定義好的 FlowEntry 送給 Switch
+            flow_entry_list=temp
+            self.write_log_object.write_log_txt('add_flow='+str(temp))
+
+        if state=='rule':
+            temp_flow_entry_list.append(str(mod))
+            temp=[]
+            for element in temp_flow_entry_list:
+                if element not in temp:
+                    temp.append(element)
+            temp_flow_entry_list=temp
+            self.write_log_object.write_log_txt('add_flow(rule)='+str(temp_flow_entry_list))
+        
+        
+        
     def delete_flow(self,datapath,table_id, priority, match, inst=0, actions=None): #刪除Flow (可以查看[1]的參考網址)
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
@@ -259,7 +370,70 @@ class SimpleSwitch15(app_manager.RyuApp):
                 for i in range(len(SCADA_Information_List['Allow_Service_IP'])):
                     Device_IP_List.append(SCADA_Information_List['Allow_Service_IP'][i])
             self.write_log_object.write_log_txt('Device_IP_List= '+str(Device_IP_List))
-    # def Set_Rule_1_in_first     
+        hub.sleep(1)
+    def Record_set_flow_entry(self,datapath,table_id,priority,rule,one_ip,two_ip=None,inst=0,actions=None):
+        global flow_entry_list_json
+        self.temp_json={}
+        self.temp_json['datapath']=datapath
+        self.temp_json['priority']=priority
+        self.temp_json['rule']=rule
+        self.temp_json['table_id']=table_id
+        if rule==0:
+            self.temp_json['rule']=rule
+            self.temp_json['one_ip']=one_ip
+            self.temp_json['inst']=inst
+            flow_entry_list_json.append(self.temp_json)
+            
+        if rule==1:
+            self.temp_json['rule']=rule
+            self.temp_json['one_ip']=one_ip
+            self.temp_json['actions']=actions
+            flow_entry_list_json.append(self.temp_json)
+        if rule==2:
+            self.temp_json['rule']=rule
+            self.temp_json['one_ip']=one_ip
+            self.temp_json['actions']=actions
+            flow_entry_list_json.append(self.temp_json)
+        if rule==3:
+            self.temp_json['rule']=rule
+            self.temp_json['one_ip']=one_ip
+            self.temp_json['two_ip']=two_ip
+            self.temp_json['actions']=actions
+            flow_entry_list_json.append(self.temp_json)
+        if rule==4:
+            self.temp_json['rule']=rule
+            self.temp_json['one_ip']=one_ip
+            self.temp_json['actions']=actions
+            flow_entry_list_json.append(self.temp_json)
+        if rule==5:
+            self.temp_json['rule']=rule
+            self.temp_json['one_ip']=one_ip
+            self.temp_json['actions']=actions
+            flow_entry_list_json.append(self.temp_json)
+        self.write_log_object.write_log_txt('Record_set_flow_entry='+str(flow_entry_list_json))
+    def Set_change_Device_Information(self,before_ip,after_ip):
+        global SCADA_Information_List
+        global flow_entry_list_json
+        for i in range(len(flow_entry_list_json)):
+            if flow_entry_list_json[i]['one_ip']==before_ip:
+                self.datapath=flow_entry_list_json[i]['datapath']
+                self.parser=self.datapath.ofproto_parser
+                self.table_id=flow_entry_list_json[i]['table_id']
+                self.priority=flow_entry_list_json[i]['priority']
+                if flow_entry_list_json[i]['rule']==0:
+                    self.temp_before_match_1=self.parser.OFPMatch(eth_type=0x0800,ipv4_dst=before_ip)
+                    self.temp_before_match_2=self.parser.OFPMatch(eth_type=0x0800,ipv4_src=before_ip)
+                    self.delete_flow(self.datapath,self.table_id,self.priority,self.temp_before_match_1)
+                    self.delete_flow(self.datapath,self.table_id,self.priority,self.temp_before_match_2)
+                    self.temp_after_match_1=self.parser.OFPMatch(eth_type=0x0800,ipv4_dst=after_ip)
+                    self.temp_after_match_2=self.parser.OFPMatch(eth_type=0x0800,ipv4_src=after_ip)
+                    self.inst=flow_entry_list_json[i]['inst']
+                    del flow_entry_list_json[i]
+                    self.add_flow(self.datapath,self.table_id,self.priority,self.temp_after_match_1,inst=self.inst)
+                    self.add_flow(self.datapath,self.table_id,self.priority,self.temp_after_match_2,inst=self.inst)
+                    self.Record_set_flow_entry(self.datapath,self.table_id,self.priority,0,after_ip,inst=self.inst)
+                # if flow_entry_list_json[i]['rule']==1:
+
 
 
 
@@ -398,10 +572,13 @@ class SimpleSwitch15(app_manager.RyuApp):
                     self.priority=20
                     self.table_0_match_1= parser.OFPMatch(eth_type=0x0800,ipv4_src=Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address'])
                     self.table_0_action_1=[]
-                    self.add_flow(datapath,RULE_1_TABLE, self.priority, self.table_0_match_1, 0,self.table_0_action_1) #在table 0比對到 往table 1送
                     for j in range(len(Factory_Block_Table)):
-                        if Factory_Block_Table[j]['Src_Address']==Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address']:
+                        if (Factory_Block_Table[j]['Src_Address']==Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address'])and Factory_Block_Table[j]['block_state']=='False':
                             Factory_Block_Table[j]['block_state']='True'
+                            # self.add_flow(datapath,RULE_1_TABLE, self.priority, self.table_0_match_1, 0,self.table_0_action_1,state='rule') #在table 0比對到 往table 1送
+                            # self.Record_set_flow_entry(datapath,RULE_1_TABLE,self.priority,1,Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address'],actions=self.table_0_action_1)
+                            self.add_flow(datapath,RULE_0_TABLE, self.priority, self.table_0_match_1, 0,self.table_0_action_1,state='rule') #在table 0比對到 往table 1送
+                            self.Record_set_flow_entry(datapath,RULE_0_TABLE,self.priority,1,Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address'],actions=self.table_0_action_1)
 
         #-----------(先將有送往PLC的封包且是TCP的送往 Packet_in)-------------------------------------------#
         if len(SCADA_Information_List['PLC_Device'])>0 and pkt.get_protocols(tcp.tcp) and self.table_id==RULE_1_TABLE:
@@ -448,7 +625,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                         self.temp_data['Src_Port']=Modbus_Tcp_Syn_Information_Table[i]['Src_Port']
                         self.temp_data['Syn_Count']=0
                         Modbus_Tcp_Syn_Count_Table.append(self.temp_data)
-                # self.write_log_object.write_log_txt('Modbus_Tcp_Syn_Information_Table='+str(Modbus_Tcp_Syn_Information_Table))
+                self.write_log_object.write_log_txt('Modbus_Tcp_Syn_Information_Table='+str(Modbus_Tcp_Syn_Information_Table))
         #----- 政策2 判斷 syn是否超過1次以上-------#
             if len(Modbus_Tcp_Syn_Count_Table)>0:
                 for i in range(len(Modbus_Tcp_Syn_Count_Table)):
@@ -459,13 +636,13 @@ class SimpleSwitch15(app_manager.RyuApp):
                             self.priority=30
                             self.table_1_match_1= parser.OFPMatch(eth_type=0x0800,ipv4_src=Modbus_Tcp_Syn_Count_Table[i]['Src_Address'])
                             self.table_1_actions=[]
-                            self.add_flow(datapath,RULE_1_TABLE, self.priority, self.table_1_match_1, 0,self.table_1_actions) #在table 2比對到 往table 2送
                             for k in range(len(Factory_Block_Table)):
-                                if Modbus_Tcp_Syn_Count_Table[i]['Src_Address']==Factory_Block_Table[k]['Src_Address']:
+                                if (Modbus_Tcp_Syn_Count_Table[i]['Src_Address']==Factory_Block_Table[k]['Src_Address'])and Factory_Block_Table[k]['block_state']=='False':
                                     Factory_Block_Table[k]['block_state']='True'
+                                    self.add_flow(datapath,RULE_1_TABLE, self.priority, self.table_1_match_1, 0,self.table_1_actions,state='rule') #在table 2比對到 往table 2送
+                                    self.Record_set_flow_entry(datapath,RULE_1_TABLE,self.priority,2,Modbus_Tcp_Syn_Count_Table[i]['Src_Address'],actions=self.table_1_actions)
 
-
-                # self.write_log_object.write_log_txt('Modbus_Tcp_Syn_Count_Table='+str(Modbus_Tcp_Syn_Count_Table))    
+                self.write_log_object.write_log_txt('Modbus_Tcp_Syn_Count_Table='+str(Modbus_Tcp_Syn_Count_Table))
 
 
          #--政策3 前資料儲存----------------------------------------------------------#
@@ -529,13 +706,14 @@ class SimpleSwitch15(app_manager.RyuApp):
                 if (Modbus_Tcp_Connect_Count_Table[i]['Connect_Count']<=SCADA_Information_List['PLC_Allow_Connect_number'])and rule_table_2_set_list[i]['Set_flow_stat']=='False':
                     for j in range(len(Modbus_Tcp_Connection_Information_Table)):
                         # if Modbus_Tcp_Connect_Count_Table[i]['Src_Address']==Modbus_Tcp_Connection_Information_Table[j]['Src_Address'] and Modbus_Tcp_Connect_Count_Table[i]['Dst_Address']==Modbus_Tcp_Connection_Information_Table[j]['Dst_Address'] and Modbus_Tcp_Connect_Count_Table[i]['Src_Port']==Modbus_Tcp_Connection_Information_Table[j]['Src_Port'] and Modbus_Tcp_Connect_Count_Table[i]['Dst_Port']==Modbus_Tcp_Connection_Information_Table[j]['Dst_Port']:
-                        if Modbus_Tcp_Connect_Count_Table[i]['Src_Address']==Modbus_Tcp_Connection_Information_Table[j]['Src_Address'] and Modbus_Tcp_Connect_Count_Table[i]['Dst_Address']==Modbus_Tcp_Connection_Information_Table[j]['Dst_Address'] :
+                        if Modbus_Tcp_Connect_Count_Table[i]['Src_Address']==Modbus_Tcp_Connection_Information_Table[j]['Src_Address'] and Modbus_Tcp_Connect_Count_Table[i]['Dst_Address']==Modbus_Tcp_Connection_Information_Table[j]['Dst_Address'] and rule_table_2_set_list[i]['Set_flow_stat']=='False' :
                             self.priority=10
                             self.table_2_match_1= parser.OFPMatch(eth_type=0x0800,ip_proto=0x6,ipv4_src=Modbus_Tcp_Connection_Information_Table[i]['Src_Address'],ipv4_dst=Modbus_Tcp_Connection_Information_Table[i]['Dst_Address'])
                             self.table_2_match_2= parser.OFPMatch(eth_type=0x0800,ip_proto=0x6,ipv4_src=Modbus_Tcp_Connection_Information_Table[i]['Dst_Address'],ipv4_dst=Modbus_Tcp_Connection_Information_Table[i]['Src_Address'])
                             self.table_2_inst_rule_1= [parser.OFPInstructionGotoTable(RULE_3_TABLE)] #Go to The Table 3
-                            self.add_flow(datapath,RULE_2_TABLE, self.priority, self.table_2_match_1, self.table_2_inst_rule_1) #在table 2比對到 往table 2送
-                            self.add_flow(datapath,RULE_2_TABLE, self.priority, self.table_2_match_2, self.table_2_inst_rule_1) #在table 2比對到 往table 2送
+                            self.add_flow(datapath,RULE_2_TABLE, self.priority, self.table_2_match_1, self.table_2_inst_rule_1,state='rule') #在table 2比對到 往table 3送
+                            self.add_flow(datapath,RULE_2_TABLE, self.priority, self.table_2_match_2, self.table_2_inst_rule_1,state='rule') #在table 2比對到 往table 3送
+                            self.Record_set_flow_entry(datapath,RULE_2_TABLE,self.priority,3,Modbus_Tcp_Connection_Information_Table[i]['Src_Address'],Modbus_Tcp_Connection_Information_Table[i]['Dst_Address'],actions=self.table_2_inst_rule_1)
                             self.default_match_flow(datapath,ofproto,parser,RULE_3_TABLE)
                             rule_table_2_set_list[i]['Set_flow_stat']='True'
                 # self.write_log_object.write_log_txt('Modbus_Tcp_Connect_Count_Table[i]["Connect_Count"]='+str(Modbus_Tcp_Connect_Count_Table[i]['Connect_Count']))
@@ -545,7 +723,9 @@ class SimpleSwitch15(app_manager.RyuApp):
                     self.table_2_action_3=[]
                     self.add_flow(datapath,RULE_2_TABLE, self.priority, self.table_2_match_3,0,self.table_2_action_3) #比對不到的全部丟掉
                     rule_2_full_state=1
-        if pkt.get_protocols(tcp.tcp) and pkt.__len__()==4 and self.tcp.has_flags(tcp.TCP_PSH,tcp.TCP_ACK) and (self.table_id==RULE_2_TABLE or self.table_id==RULE_3_TABLE):
+        #-----------------計算modbus tcp 封包是否請求一樣(政策4)--------------------------#
+        if pkt.get_protocols(tcp.tcp) and pkt.__len__()==4 and self.tcp.has_flags(tcp.TCP_PSH,tcp.TCP_ACK) and (self.table_id==RULE_2_TABLE or self.table_id==RULE_3_TABLE) :
+            
             mb=modbus_tcp.modbus_tcp()
             mb.get_modbus_tcp(self.tcp_src_port,self.tcp_dst_port,pkt.__getitem__(3))
             self.write_log_object.write_log_txt("****************")
@@ -633,10 +813,11 @@ class SimpleSwitch15(app_manager.RyuApp):
                                 self.priority=30
                                 self.table_3_match_1= parser.OFPMatch(eth_type=0x0800,ipv4_src=modbus_tcp_function_list[i]['Src_Address'])
                                 self.table_3_actions=[]
-                                self.add_flow(datapath,RULE_3_TABLE, self.priority, self.table_3_match_1, 0,self.table_3_actions) #在table 2比對到 往table 2送
                                 for k in range(len(Factory_Block_Table)):
-                                    if modbus_tcp_function_list[i]['Src_Address']==Factory_Block_Table[k]['Src_Address']:
+                                    if (modbus_tcp_function_list[i]['Src_Address']==Factory_Block_Table[k]['Src_Address'])and Factory_Block_Table[k]['block_state']=='False':
                                         Factory_Block_Table[k]['block_state']='True'
+                                        self.add_flow(datapath,RULE_3_TABLE, self.priority, self.table_3_match_1, 0,self.table_3_actions,state='rule') #在table 2比對到 往table 2送
+                                        self.Record_set_flow_entry(datapath,RULE_3_TABLE,self.priority,4,modbus_tcp_function_list[i]['Src_Address'],actions=self.table_3_actions)
                                 self.write_log_object.write_log_txt('blocktt')                        
                         modbus_tcp_function_list[i]['function_code']=[]
                 self.write_log_object.write_log_txt('modbus_tcp_function_list_after='+str(modbus_tcp_function_list))
@@ -650,14 +831,21 @@ class SimpleSwitch15(app_manager.RyuApp):
                                     print('Coil ok range')
                                     self.write_log_object.write_log_txt('Coil ok range')
                                     break
+                                elif modbus_tcp_function_data_list[i]['function_code']==5 and SCADA_Information_List['PLC_Device'][j]['PLC_Device_GPIO_Open_State'][k]['model']==1 : #還未寫
+                                    if modbus_tcp_function_data_list[i]['reference_num'] >=SCADA_Information_List['PLC_Device'][j]['PLC_Device_GPIO_Open_State'][k]['Start'] or modbus_tcp_function_data_list[i]['reference_num'] <=SCADA_Information_List['PLC_Device'][j]['PLC_Device_GPIO_Open_State'][k]['End']:
+                                        print('write Coil ok range')
+                                        self.write_log_object.write_log_txt('write Coil ok range')
+                                        break
+
                                 if k==3:
                                     self.priority=30
                                     self.table_3_match_2= parser.OFPMatch(eth_type=0x0800,ipv4_src=modbus_tcp_function_data_list[i]['Src_Address'])
                                     self.table_3_actions=[]
-                                    self.add_flow(datapath,RULE_3_TABLE, self.priority, self.table_3_match_2, 0,self.table_3_actions) #在table 2比對到 往table 2送
                                     for k in range(len(Factory_Block_Table)):
-                                        if modbus_tcp_function_data_list[i]['Src_Address']==Factory_Block_Table[k]['Src_Address']:
+                                        if (modbus_tcp_function_data_list[i]['Src_Address']==Factory_Block_Table[k]['Src_Address'])and Factory_Block_Table[k]['block_state']=='False':
                                             Factory_Block_Table[k]['block_state']='True'
+                                            self.add_flow(datapath,RULE_3_TABLE, self.priority, self.table_3_match_2, 0,self.table_3_actions,state='rule') #在table 2比對到 往table 2送
+                                            self.Record_set_flow_entry(datapath,RULE_3_TABLE,self.priority,5,modbus_tcp_function_data_list[i]['Src_Address'],actions=self.table_3_actions)
                                     print('not ok range')
                                     self.write_log_object.write_log_txt('not ok range')
 
@@ -689,8 +877,9 @@ class SimpleSwitch15(app_manager.RyuApp):
         # 因此使用 add_flow 讓 Switch 新增 FlowEntry 學習此筆政策
 
         # install a flow to avoid packet_in next time
-        if out_port != ofproto.OFPP_FLOOD:
+        if self.table_id ==0 and (out_port != ofproto.OFPP_FLOOD ):
             match = parser.OFPMatch(in_port=in_port, eth_dst=dst)
+            print("-----------------------aaasss==---------")
             self.add_flow(datapath,0, 1, match,0, actions)
 
         data = None
