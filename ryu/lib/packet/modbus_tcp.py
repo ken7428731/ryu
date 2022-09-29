@@ -161,8 +161,10 @@ class modbus_tcp():
                 self.coil_address_on()
             else: #request
                 self.reference_number=struct.unpack_from('>'+self._PACK_MODBUS_Read_Coils_Request[0], buf,self.package_all_len)
+                self.reference_number=self.reference_number[0]
                 self.char_len=struct.calcsize(self._PACK_MODBUS_Read_Coils_Request[1])
                 self.Bit_Count=struct.unpack_from('>'+self._PACK_MODBUS_Read_Coils_Request[1], buf,self.package_all_len+self.char_len)
+                self.Bit_Count=self.Bit_Count[0]
 
         elif self.fun_code==2:
             (self.t_id, self.p_id, self.modbus_len, self.u_id, self.fun_code,self.byte_count)=struct.unpack_from(self._PACK_HEADER_FUN+'B',buf)
@@ -182,8 +184,10 @@ class modbus_tcp():
                     self.lenn=self.lenn-self.char_len
             else: #request
                 self.reference_number=struct.unpack_from('>'+self._PACK_MODBUS_Read_Discrete_Inputs_Request[0], buf,self.package_all_len)
+                self.reference_number=self.reference_number[0]
                 self.char_len=struct.calcsize(self._PACK_MODBUS_Read_Discrete_Inputs_Request[1])
                 self.Bit_Count=struct.unpack_from('>'+self._PACK_MODBUS_Read_Discrete_Inputs_Request[1], buf,self.package_all_len+self.char_len)
+                self.Bit_Count=self.Bit_Count[0]
         elif self.fun_code==3: 
             (self.t_id, self.p_id, self.modbus_len, self.u_id, self.fun_code,self.byte_count)=struct.unpack_from(self._PACK_HEADER_FUN+'B',buf)
             self._MIN_LEN=struct.calcsize(self._PACK_HEADER_FUN+'B') #計算封包結構大小
@@ -202,8 +206,10 @@ class modbus_tcp():
                     self.lenn=self.lenn-self.char_len        
             else: #request
                 self.reference_number=struct.unpack_from('>'+self._PACK_MODBUS_Read_Holding_Registers_Request[0], buf,self.package_all_len)
+                self.reference_number=self.reference_number[0]
                 self.char_len=struct.calcsize(self._PACK_MODBUS_Read_Holding_Registers_Request[1])
                 self.Bit_Count=struct.unpack_from('>'+self._PACK_MODBUS_Read_Holding_Registers_Request[1], buf,self.package_all_len+self.char_len)
+                self.Bit_Count=self.Bit_Count[0]
         elif self.fun_code==4:  #未做測試
             (self.t_id, self.p_id, self.modbus_len, self.u_id, self.fun_code,self.byte_count)=struct.unpack_from(self._PACK_HEADER_FUN+'B',buf)
             self._MIN_LEN=struct.calcsize(self._PACK_HEADER_FUN+'B') #計算封包結構大小
@@ -220,21 +226,28 @@ class modbus_tcp():
                     self.lenn=self.lenn-self.char_len
             else: #request
                 self.reference_number=struct.unpack_from('>'+self._PACK_MODBUS_Read_Input_Registers_Request[0], buf,self.package_all_len)
+                self.reference_number=self.reference_number[0]
                 self.char_len=struct.calcsize(self._PACK_MODBUS_Read_Input_Registers_Request[1])
                 self.Bit_Count=struct.unpack_from('>'+self._PACK_MODBUS_Read_Input_Registers_Request[1], buf,self.package_all_len+self.char_len)
+                self.Bit_Count=self.Bit_Count[0]
         elif self.fun_code==5:
             self.reference_number=struct.unpack_from('>'+self._PACK_MODBUS_Write_Single_Coil_Request[0], buf,self.package_all_len)
+            self.reference_number=self.reference_number[0]
             self.char_len=struct.calcsize(self._PACK_MODBUS_Write_Single_Coil_Request[1])
             self.modbus_5_data=struct.unpack_from('>'+self._PACK_MODBUS_Write_Single_Coil_Request[1], buf,self.package_all_len+self.char_len)
+            self.modbus_5_data=self.modbus_5_data[0]
         elif self.fun_code==6: #不確定
             self.reference_number=struct.unpack_from('>'+self._PACK_MODBUS_Write_Single_Register_Request[0], buf,self.package_all_len)
+            self.reference_number=self.reference_number[0]
             self.char_len=struct.calcsize(self._PACK_MODBUS_Write_Single_Register_Request[1])
             self.Bit_Count=struct.unpack_from('>'+self._PACK_MODBUS_Write_Single_Register_Request[1], buf,self.package_all_len+self.char_len)
+            self.Bit_Count=self.Bit_Count[0]
         elif self.fun_code==15:
             self._fun_15_LEN=struct.calcsize(self._PACK_HEADER_FUN+self._PACK_MODBUS_Write_Multiple_Coils_Request) #計算整個封包結構大小
             self.package_len=len(buf)
             if (self.package_len==self._fun_15_LEN) and src_port==502:
                 self.reference_number=struct.unpack_from('>'+self._PACK_MODBUS_Write_Multiple_Coils_Request[0],buf,struct.calcsize(self._PACK_HEADER_FUN+self._PACK_MODBUS_Write_Multiple_Coils_Request[0]))
+                self.reference_number=self.reference_number[0]
                 self.data_lenth=struct.unpack_from('>'+self._PACK_MODBUS_Write_Multiple_Coils_Request[1],buf,struct.calcsize(self._PACK_HEADER_FUN+self._PACK_MODBUS_Write_Multiple_Coils_Request[1]))
                 self.byte_count=struct.unpack_from('>'+self._PACK_MODBUS_Write_Multiple_Coils_Request[2],buf,struct.calcsize(self._PACK_HEADER_FUN+self._PACK_MODBUS_Write_Multiple_Coils_Request[2]))
                 self.next_char_number=struct.calcsize(self._PACK_HEADER_FUN+self._PACK_MODBUS_Write_Multiple_Coils_Request[2])
@@ -247,12 +260,14 @@ class modbus_tcp():
                     self.lenn=self.lenn-self.char_len
             else:
                 self.reference_number=struct.unpack_from('>'+self._PACK_MODBUS_Write_Multiple_Coils_Request[0],buf,struct.calcsize(self._PACK_HEADER_FUN+self._PACK_MODBUS_Write_Multiple_Coils_Request[0]))
+                self.reference_number=self.reference_number[0]
                 self.data_lenth=struct.unpack_from('>'+self._PACK_MODBUS_Write_Multiple_Coils_Request[1],buf,struct.calcsize(self._PACK_HEADER_FUN+self._PACK_MODBUS_Write_Multiple_Coils_Request[1]))
         elif self.fun_code==16:
             self._fun_16_LEN=struct.calcsize(self._PACK_HEADER_FUN+self._PACK_MODBUS_Write_Multiple_Registers_Request) #計算整個封包結構大小
             self.package_len=len(buf)
             if (self.package_len==self._fun_16_LEN) and src_port==502:
                 self.reference_number=struct.unpack_from('>'+self._PACK_MODBUS_Write_Multiple_Registers_Request[0],buf,struct.calcsize(self._PACK_HEADER_FUN+self._PACK_MODBUS_Write_Multiple_Coils_Request[0]))
+                self.reference_number=self.reference_number[0]
                 self.data_lenth=struct.unpack_from('>'+self._PACK_MODBUS_Write_Multiple_Registers_Request[1],buf,struct.calcsize(self._PACK_HEADER_FUN+self._PACK_MODBUS_Write_Multiple_Coils_Request[1]))
                 self.byte_count=struct.unpack_from('>'+self._PACK_MODBUS_Write_Multiple_Registers_Request[2],buf,struct.calcsize(self._PACK_HEADER_FUN+self._PACK_MODBUS_Write_Multiple_Coils_Request[2]))
                 self.next_char_number=struct.calcsize(self._PACK_HEADER_FUN+self._PACK_MODBUS_Write_Multiple_Registers_Request[2])
@@ -265,6 +280,7 @@ class modbus_tcp():
                     self.lenn=self.lenn-self.char_len
             else:
                 self.reference_number=struct.unpack_from('>'+self._PACK_MODBUS_Write_Multiple_Registers_Request[0],buf,struct.calcsize(self._PACK_HEADER_FUN+self._PACK_MODBUS_Write_Multiple_Registers_Request[0]))
+                self.reference_number=self.reference_number[0]
                 self.data_lenth=struct.unpack_from('>'+self._PACK_MODBUS_Write_Multiple_Registers_Request[1],buf,struct.calcsize(self._PACK_HEADER_FUN+self._PACK_MODBUS_Write_Multiple_Registers_Request[1]))           
 
     

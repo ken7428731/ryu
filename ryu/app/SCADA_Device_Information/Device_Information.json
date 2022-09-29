@@ -3,7 +3,15 @@
         "192.168.3.41"
     ],
     "PLC_Device":[
-        {"IP":"192.168.3.40","Port":[502]}
+        { "IP":"192.168.3.40",
+          "Port":[502],
+          "PLC_Device_GPIO_Open_State":[
+            {"model":"Coil","Start":0,"End":11},
+            {"model":"M","Start":8193,"End":8195},
+            {"model":"D","Start":0,"End":0},
+            {"model":"X_Input","Start":0,"End":0}
+          ]
+        }
     ],
     "Facyory_Device_IP":[
         "192.168.3.50",
@@ -12,5 +20,5 @@
     "Allow_Service_IP":[
         "118.163.81.61"
     ],
-    "PLC_Allow_Connect_number":1
+    "PLC_Allow_Connect_number":2
 }
