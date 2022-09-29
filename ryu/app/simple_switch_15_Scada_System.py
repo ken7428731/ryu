@@ -43,12 +43,12 @@ RULE_5_TABLE=5
 RULE_6_TABLE=6
 SCADA_Information_List=[]
 
-def Load_SCADA_Information(): #讀取Device_Information.json資訊
-    global SCADA_Information_List
-    Load_SCADA_Information_Object=Load_Data()
-    while True:
-        SCADA_Information_List=Load_SCADA_Information_Object.Load_Information()
-        # print('SCADA_Information_List='+str(SCADA_Information_List))
+Modbus_Tcp_Packet_In_Information_Table=[]
+Device_IP_List=[]
+
+Factory_Block_Table=[]
+
+
 
 
 class SimpleSwitch15(app_manager.RyuApp):
@@ -61,13 +61,20 @@ class SimpleSwitch15(app_manager.RyuApp):
         self.write_log_object=write_log()
         self.write_log_object.delete_old_log_file()
 
-        # self.load_Scada_thread=[]
-        thread=threading.Thread(target=Load_SCADA_Information) #一直讀取 Device_Information.json，如果有做更改並在全域提醒
-        thread.start()
+        self.Load_SCADA_Information_Object=Load_Data()
+
+    def Load_SCADA_Information(self): #讀取Device_Information.json資訊
+        global SCADA_Information_List
+        # while True:
+        SCADA_Information_List=self.Load_SCADA_Information_Object.Load_Information()
+            # print('SCADA_Information_List='+str(SCADA_Information_List))
+
         
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
+        global SCADA_Information_List
+        
         # 一開始 Switch 連上 Controller 時的初始設定 Function
         datapath = ev.msg.datapath # 接收 OpenFlow 交換器實例
         ofproto = datapath.ofproto  # OpenFlow 交換器使用的 OF 協定版本
@@ -77,6 +84,14 @@ class SimpleSwitch15(app_manager.RyuApp):
         start_default_match = parser.OFPMatch()
         start_default_actions=[]
         self.add_flow(datapath,0,65535,start_default_match,0,start_default_actions)
+
+        
+        t=threading.Thread(target=self.Load_SCADA_Information) #讀取 Device_Information.json，如果有做更改並在全域提醒
+        t.start()
+        self.Set_Device_Information_List()
+
+
+
         # install table-miss flow entry
         #
         # We specify NO BUFFER to max_len of the output action due to
@@ -94,6 +109,20 @@ class SimpleSwitch15(app_manager.RyuApp):
         # 把 Table-Miss FlowEntry 設定至 Switch，並指定優先權為 0 (最低)
         self.add_flow(datapath,0, 0, match,0, actions)
 
+        #-----------政策1 (先將有送往PLC的封包送往 Packet_in)-------------------------------------------#
+        if len(SCADA_Information_List['PLC_Device'])>0:
+            for i in range(len(SCADA_Information_List['PLC_Device'])):
+                self.priority=10
+                self.table_0_match_1= parser.OFPMatch(eth_type=0x0800,ipv4_dst=SCADA_Information_List['PLC_Device'][i]['IP'])
+                self.table_0_inst_rule_1= [parser.OFPInstructionGotoTable(RULE_1_TABLE)] #Go to The Table 1
+                self.add_flow(datapath,0, self.priority, self.table_0_match_1, self.table_0_inst_rule_1) #在table 0比對到 往table 1送
+            match = parser.OFPMatch()
+            actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
+                                            ofproto.OFPCML_NO_BUFFER)]
+            self.add_flow(datapath,RULE_1_TABLE, 0, match,0, actions)
+        
+        
+
         # #------測試(如果比對到tcp且是請求連線的訊號封包時，就丟掉)------------------#
         # self.table_id=0
         # self.priority=666
@@ -106,25 +135,26 @@ class SimpleSwitch15(app_manager.RyuApp):
         #                                   ofproto.OFPCML_NO_BUFFER)]                                      
         # self.add_flow(datapath,0, self.priority, match_1, 0, actions)
 
-        #-------測試2 (測試Table 0 比對到的封包後再到Table 1進行比對[table 1 為如果是TCP 封包的話，就丟棄])-----------------#
-        table_0_match_1 = parser.OFPMatch(eth_type=0x0800,ipv4_src="192.168.3.40")#比對封包ip 往PLC的
-        table_0_match_2 = parser.OFPMatch(eth_type=0x0800,ipv4_dst="192.168.3.40")#比對ip往PLC的
-        table_0_inst_rule_1= [parser.OFPInstructionGotoTable(RULE_1_TABLE)] #Go to The Table 1
-        self.add_flow(datapath,0, 10, table_0_match_1, table_0_inst_rule_1) #在table 0比對到 往table 1送
-        self.add_flow(datapath,0, 10, table_0_match_2, table_0_inst_rule_1) #在table 0比對到 往table 1送
+        # #-------測試2 (測試Table 0 比對到的封包後再到Table 1進行比對[table 1 為如果是TCP 封包的話，就丟棄])-----------------#
+        # table_0_match_1 = parser.OFPMatch(eth_type=0x0800,ipv4_src="192.168.3.40")#比對封包ip 往PLC的
+        # table_0_match_2 = parser.OFPMatch(eth_type=0x0800,ipv4_dst="192.168.3.40")#比對ip往PLC的
+        # table_0_inst_rule_1= [parser.OFPInstructionGotoTable(RULE_1_TABLE)] #Go to The Table 1
+        # self.add_flow(datapath,0, 10, table_0_match_1, table_0_inst_rule_1) #在table 0比對到 往table 1送
+        # self.add_flow(datapath,0, 10, table_0_match_2, table_0_inst_rule_1) #在table 0比對到 往table 1送
 
-        table_1_match_1 = parser.OFPMatch(eth_type=0x0800,ip_proto=0x6)#如果是TCP的話
-        table_1_actions_1 = []                                      
-        self.add_flow(datapath,RULE_1_TABLE, 2, table_1_match_1,0,table_1_actions_1) #在table 0比對到 往table 1送
+        # table_1_match_1 = parser.OFPMatch(eth_type=0x0800,ip_proto=0x6)#如果是TCP的話
+        # table_1_actions_1 = []                                      
+        # self.add_flow(datapath,RULE_1_TABLE, 2, table_1_match_1,0,table_1_actions_1) #在table 0比對到 往table 1送
         
-        table_1_match_0 = parser.OFPMatch() #Table_1如果都沒有 match的話就送往Controller
-        table_1_actions_0 = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
-                                          ofproto.OFPCML_NO_BUFFER)]
-        self.add_flow(datapath,RULE_1_TABLE, 0, table_1_match_0,0, table_1_actions_0)
+        # table_1_match_0 = parser.OFPMatch() #Table_1如果都沒有 match的話就送往Controller
+        # table_1_actions_0 = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
+        #                                   ofproto.OFPCML_NO_BUFFER)]
+        # self.add_flow(datapath,RULE_1_TABLE, 0, table_1_match_0,0, table_1_actions_0)
         
         #移除 一開始新增的 所有封包當阻擋的flow
         match = parser.OFPMatch()
         self.delete_flow(datapath,0,65535,match,0)
+        print('tempp')
 
 
 
@@ -154,22 +184,42 @@ class SimpleSwitch15(app_manager.RyuApp):
         # else:
         #     inst=inst
 
-        # 刪除FLOW 。 ofproto.OFPFC_DELETE_STRICT 為匹配(match與priority)到規則後，進行刪除
+        # 刪除FLOW 。 ofproto.OFPFC_DELETE_STRICT 為匹配(match與priority)到flow entry後，進行刪除
         mod=parser.OFPFlowMod(cookie=0x01,datapath=datapath, table_id=table_id,command=ofproto.OFPFC_DELETE_STRICT,
                               out_port=ofproto.OFPP_ANY,out_group=ofproto.OFPG_ANY,
                               priority=priority,match=match)
         result=datapath.send_msg(mod)
+    def Set_Device_Information_List(self):
+        global Device_IP_List
+        if len(SCADA_Information_List)>0:
+            if len(SCADA_Information_List['HMI_Device_IP'])>0:
+                for i in range(len(SCADA_Information_List['HMI_Device_IP'])):
+                    Device_IP_List.append(SCADA_Information_List['HMI_Device_IP'][i])
+            if len(SCADA_Information_List['PLC_Device'])>0:
+                for i in range(len(SCADA_Information_List['PLC_Device'])):
+                    Device_IP_List.append(SCADA_Information_List['PLC_Device'][i]['IP'])
+            if len(SCADA_Information_List['Facyory_Device_IP'])>0:
+                for i in range(len(SCADA_Information_List['Facyory_Device_IP'])):
+                    Device_IP_List.append(SCADA_Information_List['Facyory_Device_IP'][i])
+            if len(SCADA_Information_List['Allow_Service_IP'])>0:
+                for i in range(len(SCADA_Information_List['Allow_Service_IP'])):
+                    Device_IP_List.append(SCADA_Information_List['Allow_Service_IP'][i])
+    # def Set_Rule_1_in_first     
 
 
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
+        global Modbus_Tcp_Packet_In_Information_Table
+        global Factory_Block_Table
+        global Device_IP_List
         msg = ev.msg
         # self.write_log_object.write_log_txt("ev.msg="+str(msg))
         datapath = msg.datapath
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         in_port = msg.match['in_port']
+        self.table_id=msg.table_id
 
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocols(ethernet.ethernet)[0]
@@ -181,13 +231,14 @@ class SimpleSwitch15(app_manager.RyuApp):
         src = eth.src
 
         # ------- 測試 ---------------------------#
-
+        print('packet in is table_id='+str(self.table_id))
         if pkt.get_protocols(ipv4.ipv4):
             self.ipv4=pkt.get_protocols(ipv4.ipv4)[0]
             self.ipv4_src = self.ipv4.src
             self.ipv4_dst = self.ipv4.dst
             self.ipv4_protocol=self.ipv4.proto
             self.ipv4_services=self.ipv4.tos
+
         if pkt.get_protocols(tcp.tcp):
             self.tcp=pkt.get_protocols(tcp.tcp)[0]
             self.tcp_src_port=self.tcp.src_port
@@ -203,11 +254,70 @@ class SimpleSwitch15(app_manager.RyuApp):
             print("tcp="+str(self.tcp))
             print("tcp_seq_number="+str(self.tcp_seq_number))
 
+        if pkt.get_protocols(ipv4.ipv4) and self.table_id==RULE_1_TABLE:
+            self.temp={}
+            self.temp2={}
+            self.temp3={}
+            self.temp['Src_Address']=self.ipv4_src
+            self.temp['Dst_Address']=self.ipv4_dst
+            self.temp['In_Port']=in_port
+            self.temp2['Src_Address']=self.ipv4_src
+            self.temp2['block_state']='False'
+            self.temp3['Src_Address']=self.ipv4_dst
+            self.temp3['block_state']='False'
+            if len(Modbus_Tcp_Packet_In_Information_Table)>0:
+                a=[temp for temp in Modbus_Tcp_Packet_In_Information_Table if temp['Src_Address']==self.ipv4_src and temp['Dst_Address']==self.ipv4_dst ] #搜尋是否有在 Modbus_Tcp_Packet_In_Information_Table裡面
+                if len(a)>0:
+                    for i in range(len(Modbus_Tcp_Packet_In_Information_Table)):
+                        if Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address']==self.ipv4_src and Modbus_Tcp_Packet_In_Information_Table[i]['Dst_Address']==self.ipv4_dst:
+                            Modbus_Tcp_Packet_In_Information_Table[i]['In_Port']=in_port
+                else:#沒有在Table裡面，就新增一筆
+                    Modbus_Tcp_Packet_In_Information_Table.append(self.temp)
+                    #
+                    b=[temp for temp in Factory_Block_Table if temp['Src_Address']==self.ipv4_src] #搜尋是否有在 Factory_Block_Table 裡面
+                    if len(b)<=0:
+                        Factory_Block_Table.append(self.temp2)
+
+                    c=[temp for temp in Factory_Block_Table if temp['Src_Address']==self.ipv4_dst] #搜尋是否有在 Factory_Block_Table 裡面
+                    if len(c)<0:
+                        Factory_Block_Table.append(self.temp3)
+            else:
+                Modbus_Tcp_Packet_In_Information_Table.append(self.temp)
+                Factory_Block_Table.append(self.temp2)
+                Factory_Block_Table.append(self.temp3)
+
+            print('----------Rule information------------')
+            self.write_log_object.write_log_txt('----------Rule information------------')
+            print('Modbus_Tcp_Packet_In_Information_Table= '+str(Modbus_Tcp_Packet_In_Information_Table))
+            self.write_log_object.write_log_txt('Modbus_Tcp_Packet_In_Information_Table= '+str(Modbus_Tcp_Packet_In_Information_Table))
+            print('Factory_Block_Table= '+str(Factory_Block_Table))
+            self.write_log_object.write_log_txt('Factory_Block_Table= '+str(Factory_Block_Table))
+
+        if len(Modbus_Tcp_Packet_In_Information_Table)>0 :
+            for i in range(len(Modbus_Tcp_Packet_In_Information_Table)):
+                a=[temp for temp in Device_IP_List if temp==Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address'] ] #搜尋是否有在 Modbus_Tcp_Packet_In_Information_Table裡面
+                if len(a)<=0:
+                    self.priority=20
+                    self.table_0_match_1= parser.OFPMatch(eth_type=0x0800,ipv4_src=Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address'])
+                    self.table_0_action_1=[]
+                    self.add_flow(datapath,RULE_1_TABLE, self.priority, self.table_0_match_1, 0,self.table_0_action_1) #在table 0比對到 往table 1送
+                    for j in range(len(Factory_Block_Table)):
+                        if Factory_Block_Table[j]['Src_Address']==Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address']:
+                            Factory_Block_Table[j]['block_state']='True'
+
+
+
+
+
+
+
+
         #將資料寫到log檔
         if pkt.get_protocols(tcp.tcp):
             self.write_log_object.write_log_txt("-----------------")
             self.write_log_object.write_log_txt("ev="+str(ev))
             self.write_log_object.write_log_txt("ev.msg="+str(msg))
+            self.write_log_object.write_log_txt("packet in is table_id="+str(self.table_id))
             # self.write_log_object.write_log_txt("packet_timestamp="+str(self.packet_timestamp))
             # self.write_log_object.write_log_txt("packet_datetime="+str(self.packet_datetime))
             # self.write_log_object.write_log_txt("ev.msg.data="+str(self.data))
@@ -260,7 +370,7 @@ class SimpleSwitch15(app_manager.RyuApp):
         actions = [parser.OFPActionOutput(out_port)]
 
         # 如果沒有讓 switch flooding，表示目的端 mac 有學習過
-        # 因此使用 add_flow 讓 Switch 新增 FlowEntry 學習此筆規則
+        # 因此使用 add_flow 讓 Switch 新增 FlowEntry 學習此筆
 
         # install a flow to avoid packet_in next time
         if out_port != ofproto.OFPP_FLOOD:
@@ -275,4 +385,9 @@ class SimpleSwitch15(app_manager.RyuApp):
         # 把要 Switch 執行的動作包裝成 Packet_out，並讓 Switch 執行動作
         out = parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id,
                                   match=match, actions=actions, data=data)
-        datapath.send_msg(out) #將封包傳送回ovs
+        if len(Factory_Block_Table)>0 and self.table_id==RULE_1_TABLE:
+            for i in range(len(Factory_Block_Table)):
+                if Factory_Block_Table[i]['Src_Address']==self.ipv4_src and Factory_Block_Table[i]['block_state']=='False': #如果封包進來的ip沒有被Factory_Block_Table 註記為阻擋狀態下
+                    datapath.send_msg(out) #將封包傳送回ovs
+        else:
+            datapath.send_msg(out)#將封包傳送回ovs
