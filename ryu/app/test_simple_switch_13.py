@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+#參考 https://gist.github.com/aweimeow/d3662485aa224d298e671853aadb2d0f 的基本教學
+
 # Copyright (C) 2011 Nippon Telegraph and Telephone Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +24,11 @@ from ryu.ofproto import ofproto_v1_3
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ether_types
-from scada_log.write_log_txt import write_log
+from ryu.lib.packet import ipv4
+from ryu.lib.packet import tcp
 
+from scada_log.write_log_txt import write_log
+from scada_log.epoch_to_datetime import epoch_to_datetime
 
 class SimpleSwitch13(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -33,13 +39,16 @@ class SimpleSwitch13(app_manager.RyuApp):
 
         self.write_log_object=write_log()
         self.write_log_object.delete_old_log_file()
-        self.write_log_object.delete_old_log_file_2()
+        self.datetime_object=epoch_to_datetime()
 
-    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
-    def switch_features_handler(self, ev):
-        datapath = ev.msg.datapath
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
+    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER) #程式開始執行時，會先到這裡針對OvS設定相關的資訊
+    # set_ev_cls(ev_cls, dispatchers=None): 事件接收
+    # set_ev_cls 為 是一個用於將方法註冊成 Ryu 事件處理器的一個修飾器，被修飾的 方法將會成為一個事件處理器。
+    # dispatchers 為 該事件處理器將會在哪些談判階段（negotiation phases） 去接收此一類型的事件。
+    def switch_features_handler(self, ev):# 一開始 Switch 連上 Controller 時的初始設定 Function
+        datapath = ev.msg.datapath # 接收 OpenFlow 交換器實例
+        ofproto = datapath.ofproto # OpenFlow 交換器使用的 OpenFlow 協定版本
+        parser = datapath.ofproto_parser # 處理 OpenFlow 協定的 parser(解析)
 
         # install table-miss flow entry
         #
@@ -48,15 +57,22 @@ class SimpleSwitch13(app_manager.RyuApp):
         # 128, OVS will send Packet-In with invalid buffer_id and
         # truncated packet data. In that case, we cannot output packets
         # correctly.  The bug has been fixed in OVS v2.1.0.
+
+        # 首先新增一個空的 match，也就是能夠 match 任何封包的 match rule
         match = parser.OFPMatch()
+        # 指定這一條 Table-Miss FlowEntry 的對應行為
+        # 把所有不知道如何處理的封包都送到 Controller
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
+        # 把 Table-Miss FlowEntry 設定至 Switch，並指定優先權為 0 (最低)
         self.add_flow(datapath, 0, match, actions)
-
+    #---------新增flow到ovs上----------
     def add_flow(self, datapath, priority, match, actions, buffer_id=None):
+        # 取得與 Switch 使用的 IF 版本 對應的 OF 協定及 parser
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
-
+        # Instructions 是定義當封包滿足 match 時，所要執行的動作
+        # 因此把 action 以 OFPInstructionActions 包裝起來
         inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
                                              actions)]
         if buffer_id:
@@ -64,10 +80,11 @@ class SimpleSwitch13(app_manager.RyuApp):
                                     priority=priority, match=match,
                                     instructions=inst)
         else:
+             # FlowMod Function 可以讓我們對 Switch 寫入由我們所定義的 Flow Entry
             mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
                                     match=match, instructions=inst)
         datapath.send_msg(mod)
-
+    # 處理ovs傳送過來的封包
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
         # If you hit this you might want to increase
@@ -76,7 +93,10 @@ class SimpleSwitch13(app_manager.RyuApp):
             self.logger.debug("packet truncated: only %s of %s bytes",
                               ev.msg.msg_len, ev.msg.total_len)
         msg = ev.msg
-        self.write_log_object.write_log_txt_2("ev.msg="+str(msg))
+        # self.write_log_object.write_log_txt_2("ev.msg="+str(msg))
+        print("-----------------------")
+        self.packet_timestamp=getattr(ev, 'timestamp', None) #取得 ev 裡面的 timestamp 。getattr 『取得』class 內定義變數的值
+        self.packet_datetime=self.datetime_object.get_datetime(self.packet_timestamp)
         datapath = msg.datapath
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
@@ -91,6 +111,55 @@ class SimpleSwitch13(app_manager.RyuApp):
             return
         dst = eth.dst
         src = eth.src
+
+        if self.pkt.get_protocols(ipv4.ipv4):
+            self.ipv4=self.pkt.get_protocols(ipv4.ipv4)[0]
+            self.ipv4_src = self.ipv4.src
+            self.ipv4_dst = self.ipv4.dst
+            self.ipv4_protocol=self.ipv4.proto
+            self.ipv4_services=self.ipv4.tos
+        if self.pkt.get_protocols(tcp.tcp):
+            self.tcp=self.pkt.get_protocols(tcp.tcp)[0]
+            self.tcp_src_port=self.tcp.src_port
+            self.tcp_dst_port=self.tcp.dst_port
+            self.tcp_seq_number=self.tcp.seq
+            self.tcp_ack=self.tcp.ack
+            self.tcp_flags=self.tcp.bits
+        #----- 顯示ipv4與tcp的內容
+        if self.pkt.get_protocols(ipv4.ipv4):
+            print("ipv4_src="+str(self.ipv4_src))
+            print("ipv4_dst="+str(self.ipv4_dst))
+        if self.pkt.get_protocols(tcp.tcp):
+            print("tcp="+str(self.tcp))
+            print("tcp_seq_number="+str(self.tcp_seq_number))
+
+        #---------將資料寫到log檔----------------
+        if self.pkt.get_protocols(tcp.tcp):
+            self.write_log_object.write_log_txt("-----------------")
+            self.write_log_object.write_log_txt("ev="+str(ev))
+            self.write_log_object.write_log_txt("ev.msg="+str(ev.msg))
+            self.write_log_object.write_log_txt("packet_timestamp="+str(self.packet_timestamp))
+            self.write_log_object.write_log_txt("packet_datetime="+str(self.packet_datetime))
+            self.write_log_object.write_log_txt("ev.msg.data="+str(self.data))
+            self.write_log_object.write_log_txt("datapath="+str(self.datapath))
+            self.write_log_object.write_log_txt("parser="+str(self.parser))
+            self.write_log_object.write_log_txt("in_port="+str(self.in_port))
+            self.write_log_object.write_log_txt("pkt="+str(self.pkt))
+            # self.write_log_object.write_log_txt("pkt_len="+str(self.pkt.__len__()))
+            self.write_log_object.write_log_txt("eth="+str(self.eth))
+            self.write_log_object.write_log_txt("dst="+str(self.dst))
+            self.write_log_object.write_log_txt("src="+str(self.src))
+            # if self.pkt.get_protocols(ipv4.ipv4):
+            self.write_log_object.write_log_txt("ipv4="+str(self.ipv4))
+            self.write_log_object.write_log_txt("ipv4.src="+str(self.ipv4_src))
+            self.write_log_object.write_log_txt("ipv4.dst="+str(self.ipv4_dst))
+            # if self.pkt.get_protocols(tcp.tcp):
+            self.write_log_object.write_log_txt("tcp="+str(self.tcp))
+            self.write_log_object.write_log_txt("tcp_src_port="+str(self.tcp_src_port))
+            self.write_log_object.write_log_txt("tcp_dst_port="+str(self.tcp_dst_port))
+            self.write_log_object.write_log_txt("tcp_seq_number="+str(self.tcp_seq_number))
+        
+
 
         dpid = format(datapath.id, "d").zfill(16)
         self.mac_to_port.setdefault(dpid, {})
