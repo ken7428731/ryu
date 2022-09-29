@@ -97,7 +97,7 @@ class modbus_tcp():
         while temp_len<all_len:
             temp_list=[]
             item = bin(int(self.modbus_data[temp_len][0])) #item= 0b10
-            print(item)
+            # print(item)
             # 去掉每段二进制前的0b.
             item = item[2:] #item=10
             #每个字段转换成八位，不足的在每段前补0.
