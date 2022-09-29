@@ -36,7 +36,7 @@ class SimpleSwitch13(app_manager.RyuApp):
     def __init__(self, *args, **kwargs):
         super(SimpleSwitch13, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
-
+        self.modbus_tcp_information=[]
         self.write_log_object=write_log()
         self.write_log_object.delete_old_log_file()
         self.datetime_object=epoch_to_datetime()
@@ -159,6 +159,52 @@ class SimpleSwitch13(app_manager.RyuApp):
             self.write_log_object.write_log_txt("tcp_dst_port="+str(self.tcp_dst_port))
             self.write_log_object.write_log_txt("tcp_seq_number="+str(self.tcp_seq_number))
         
+        #----------------- 儲存 TCP連線狀態時間------------------------------------------------------#
+            if self.tcp_dst_port==502 and self.tcp.has_flags(tcp.TCP_SYN): #modbus_tcp 建立連線
+                self.temp_date_list={}
+                self.temp_date_list['ipv4_src']=self.ipv4_src
+                self.temp_date_list['ipv4_dst']=self.ipv4_dst
+                self.temp_date_list['src_port']=self.tcp_src_port
+                self.temp_date_list['dst_port']=self.tcp_dst_port
+                self.temp_date_list['tcp_connection_time']=[]
+                self.temp_tcp_connection_time={}
+                self.temp_tcp_connection_time_array=[]
+                if len(self.modbus_tcp_information)>0:
+                    for i in range(len(self.modbus_tcp_information)):
+                        if self.modbus_tcp_information[i]['ipv4_src']==self.ipv4_src and self.modbus_tcp_information[i]['ipv4_dst']==self.ipv4_dst and len(self.modbus_tcp_information[i]['tcp_connection_time'])>0:
+                            self.temp_tcp_connection_time={}
+                            self.temp_tcp_connection_time_array=[]
+                            self.temp_tcp_connection_time['tcp_syn_time']=self.packet_timestamp
+                            self.temp_tcp_connection_time_array.append(self.temp_tcp_connection_time)
+                            self.modbus_tcp_information[i]['tcp_connection_time'].append(self.temp_tcp_connection_time_array)
+                        else:
+                            self.temp_tcp_connection_time['tcp_syn_time']=self.packet_timestamp
+                            self.temp_tcp_connection_time_array.append(self.temp_tcp_connection_time)
+                            self.temp_date_list['tcp_connection_time'].append(self.temp_tcp_connection_time_array)
+                            self.modbus_tcp_information.append(self.temp_date_list)
+                else:
+                    self.temp_tcp_connection_time['tcp_syn_time']=self.packet_timestamp
+                    self.temp_tcp_connection_time_array.append(self.temp_tcp_connection_time)
+                    self.temp_date_list['tcp_connection_time'].append(self.temp_tcp_connection_time_array)
+                    self.modbus_tcp_information.append(self.temp_date_list)
+                print('packet_is:SYN')
+                self.write_log_object.write_log_txt('packet_is:SYN')
+                print('self.modbus_tcp_information='+str(self.modbus_tcp_information))
+                self.write_log_object.write_log_txt('self.modbus_tcp_information='+str(self.modbus_tcp_information))
+            # self.tcp.
+            if self.tcp_src_port==502  and self.tcp.has_flags(tcp.TCP_FIN,tcp.TCP_ACK): #modbus_tcp 斷線
+                if len(self.modbus_tcp_information)>0:
+                    for i in range(len(self.modbus_tcp_information)):
+                        if self.modbus_tcp_information[i]['ipv4_src']==self.ipv4_dst and self.modbus_tcp_information[i]['ipv4_dst']==self.ipv4_src and len(self.modbus_tcp_information[i]['tcp_connection_time'])>0:
+                            for j in range(len(self.modbus_tcp_information[i]['tcp_connection_time'])):
+                                if len(self.modbus_tcp_information[i]['tcp_connection_time'][j][0])<2:
+                                    self.modbus_tcp_information[i]['tcp_connection_time'][j][0]['tcp_fin_time']=self.packet_timestamp #放入結束時間
+                                    #計算 duration_time
+                                    self.modbus_tcp_information[i]['tcp_connection_time'][j][0]['duration_time']=self.modbus_tcp_information[i]['tcp_connection_time'][j][0]['tcp_fin_time']-self.modbus_tcp_information[i]['tcp_connection_time'][j][0]['tcp_syn_time']
+                print('packet_is:FIN')
+                self.write_log_object.write_log_txt('packet_is:FIN')
+                print('self.modbus_tcp_information='+str(self.modbus_tcp_information))
+                self.write_log_object.write_log_txt('self.modbus_tcp_information='+str(self.modbus_tcp_information))
 
 
         dpid = format(datapath.id, "d").zfill(16)
