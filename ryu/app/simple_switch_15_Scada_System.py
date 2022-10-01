@@ -19,6 +19,7 @@
 #--------參考網址-------------------------#
 #[1] https://stackoverflow.com/questions/49971882/delete-flows-matching-specific-cookie-openflow-1-3-5-spec-support-by-openvswit
 # https://gist.github.com/aweimeow/d3662485aa224d298e671853aadb2d0f 的基本教學
+# 可以查看 https://osrg.github.io/ryu-book/zh_tw/html/packet_lib.html
 
 
 from typing import Counter
@@ -513,7 +514,6 @@ class SimpleSwitch15(app_manager.RyuApp):
                     del Factory_Block_Table[i]
             # self.write_log_object.write_log_txt('del_Factory_Block_Table='+str(Factory_Block_Table))
 
-
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         global SCADA_Information_List
@@ -534,7 +534,6 @@ class SimpleSwitch15(app_manager.RyuApp):
         # self.add_flow(datapath,0,65535,start_default_match,0,start_default_actions)
 
         self.send_port_stats_request(datapath) #LLDP傳送消息
-
         
         # t=threading.Thread(target=self.Load_SCADA_Information) #讀取 Device_Information.json，如果有做更改並在全域提醒
         # t.start()
@@ -621,12 +620,22 @@ class SimpleSwitch15(app_manager.RyuApp):
         # CTR ask SW port 
         msg = ev.msg
         datapath = msg.datapath
+        dpid=datapath.id
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
-        # LLDP packet to controller
+        self.write_log_object.write_log_txt('dpid='+str(dpid))
+        self.write_log_object.write_log_txt('ev.msg.body='+str(ev.msg.body))
         for stat in ev.msg.body:
             if stat.port_no < ofproto.OFPP_MAX:
+                # LLDP packet to controller
                 self.send_lldp_packet(datapath, stat.port_no, stat.hw_addr)
+                self.send_arp_broadcast_packet(datapath, stat.port_no, stat.hw_addr)
+                # self.write_log_object.write_log_txt('----port_stats_reply_handler(start)-----')
+                # self.write_log_object.write_log_txt('stat.port_no='+str(stat.port_no))
+                # self.write_log_object.write_log_txt('stat.hw_addr='+str(stat.hw_addr))
+                # self.write_log_object.write_log_txt('----port_stats_reply_handler(end)-----')
+
+
 
     def send_lldp_packet(self, datapath, port_no, hw_addr):
         ofproto = datapath.ofproto
@@ -673,7 +682,7 @@ class SimpleSwitch15(app_manager.RyuApp):
     
     # Link two switch
     def switch_link(self,s_a,s_b):
-        # self.write_log_object.write_log_txt(str(s_a) + '<--->' + str(s_b))
+        self.write_log_object.write_log_txt(str(s_a) + '<--->' + str(s_b))
         return s_a + '<--->' + s_b
             
     def handle_lldp(self,dpid,in_port,lldp_pkt):
@@ -707,6 +716,77 @@ class SimpleSwitch15(app_manager.RyuApp):
 
     #------------- LLDP 函式(End) --------------------------------------------------#
 
+    #------------- ARP 函式(Start) --------------------------------------------------#
+    def send_arp_broadcast_packet(self, datapath, port_no, hw_addr):
+        global Device_IP_List
+        ofproto = datapath.ofproto
+        ofp_parser = datapath.ofproto_parser
+        for i in range(len(Device_IP_List)):
+            pkt = packet.Packet()
+            pkt.add_protocol(ethernet.ethernet(ethertype=ether_types.ETH_TYPE_ARP,dst='ff:ff:ff:ff:ff:ff',src=hw_addr))
+            pkt.add_protocol(arp.arp(opcode=arp.ARP_REQUEST, src_mac=hw_addr,dst_mac='00:00:00:00:00:00', dst_ip=Device_IP_List[i]))
+            pkt.serialize()
+            # self.write_log_object.write_log_txt('send_arp_broadcast_packet='+str(pkt))
+            
+            data = pkt.data
+            match = ofp_parser.OFPMatch(in_port=ofproto.OFPP_CONTROLLER)
+            actions = [ofp_parser.OFPActionOutput(port=port_no)]
+            out = ofp_parser.OFPPacketOut(datapath=datapath,
+                                    buffer_id=ofproto.OFP_NO_BUFFER,
+                                    match=match,
+                                    actions=actions,
+                                    data=data)
+            datapath.send_msg(out)
+
+    def _handle_arp(self, datapath, in_port, pkt):
+        dpid=datapath.id
+        eth = pkt.get_protocols(ethernet.ethernet)[0]
+        pkt_arp = pkt.get_protocol(arp.arp)
+        eth_src=eth.src
+        eth_dst=eth.dst
+        arp_opcode = pkt_arp.opcode
+        arp_src_mac = pkt_arp.src_mac
+        arp_dst_mac = pkt_arp.dst_mac
+        arp_src_ip = pkt_arp.src_ip
+        arp_dst_ip = pkt_arp.dst_ip
+
+        # if arp_opcode==arp.ARP_REQUEST:
+        #     self.write_log_object.write_log_txt("----arp_ARP_REQUEST(start)-------")
+        #     self.write_log_object.write_log_txt("dpid="+str(dpid))
+        #     self.write_log_object.write_log_txt("arp_in_port="+str(in_port))
+        #     self.write_log_object.write_log_txt("eth_src="+str(eth_src))
+        #     self.write_log_object.write_log_txt("eth_dst="+str(eth_dst))
+        #     self.write_log_object.write_log_txt("arp_opcode="+str(arp_opcode))
+        #     self.write_log_object.write_log_txt("arp_src_mac="+str(arp_src_mac))
+        #     self.write_log_object.write_log_txt("arp_src_ip="+str(arp_src_ip))
+        #     self.write_log_object.write_log_txt("arp_dst_mac="+str(arp_dst_mac))
+        #     self.write_log_object.write_log_txt("arp_dst_ip="+str(arp_dst_ip))
+        #     self.write_log_object.write_log_txt("----arp(end)-------")
+        # elif arp_opcode==arp.ARP_REPLY:
+        if arp_opcode==arp.ARP_REPLY:
+            if dpid in self.ip_to_port and arp_src_ip!='0.0.0.0':
+                self.ip_to_port[dpid][arp_src_ip]=in_port
+                # self.write_log_object.write_log_txt("----arp_ARP_REPLY(start)-------")
+                # self.write_log_object.write_log_txt("dpid="+str(dpid))
+                # self.write_log_object.write_log_txt("arp_in_port="+str(in_port))
+                # self.write_log_object.write_log_txt("eth_src="+str(eth_src))
+                # self.write_log_object.write_log_txt("eth_dst="+str(eth_dst))
+                # self.write_log_object.write_log_txt("arp_opcode="+str(arp_opcode))
+                # self.write_log_object.write_log_txt("arp_src_mac="+str(arp_src_mac))
+                # self.write_log_object.write_log_txt("arp_src_ip="+str(arp_src_ip))
+                # self.write_log_object.write_log_txt("arp_dst_mac="+str(arp_dst_mac))
+                # self.write_log_object.write_log_txt("arp_dst_ip="+str(arp_dst_ip))
+                # self.write_log_object.write_log_txt("----arp(end)-------")
+    
+    # def arp_packet_out(self,datapath,in_port,out_port):
+    #     ofproto = datapath.ofproto
+    #     parser = datapath.ofproto_parser
+    #     match=parser.OFPMatch(in_port=ofproto.OFPP_CONTROLLER)
+    #     actions = [parser.OFPActionOutput(out_port)]
+    #     out = parser.OFPPacketOut(datapath=datapath, buffer_id=ofproto.OFP_NO_BUFFER,
+    #                               match=match, actions=actions, data=data)
+
+    #------------- ARP 函式(End) --------------------------------------------------#
 
     def add_flow(self, datapath,table_id, priority, match, inst=0, actions=None,state=None):
         global flow_entry_list
@@ -774,21 +854,6 @@ class SimpleSwitch15(app_manager.RyuApp):
                                           ofproto.OFPCML_NO_BUFFER)]
         # 把 Table-Miss FlowEntry 設定至 Switch，並指定優先權為 0 (最低)
         self.add_flow(datapath,table_id, 0, match,0, actions)
-
-    def _handle_arp(self, datapath, port, pkt_ethernet, pkt_arp):
-        if pkt_arp.opcode != arp.ARP_REQUEST:
-            return
-        pkt = packet.Packet()
-        pkt.add_protocol(ethernet.ethernet(ethertype=pkt_ethernet.ethertype,
-                                           dst=pkt_ethernet.src,
-                                           src=self.hw_addr))
-        pkt.add_protocol(arp.arp(opcode=arp.ARP_REPLY,
-                                 src_mac=self.hw_addr,
-                                 src_ip=self.ip_addr,
-                                 dst_mac=pkt_arp.src_mac,
-                                 dst_ip=pkt_arp.src_ip))
-        self._send_packet_to_port(datapath, port, pkt)
-
 
     def _send_packet_to_port(self, datapath, port, pkt):
         ofproto = datapath.ofproto
@@ -864,19 +929,14 @@ class SimpleSwitch15(app_manager.RyuApp):
                 t = threading.Thread(target = self.handle_lldp(dpid, in_port, pkt_lldp))
                 t.start()                
                 return
-        # if eth.ethertype ==ether_types.ETH_TYPE_ARP:
-        #     pkt_arp=pkt.get_protocol(arp.arp)
-        #     if pkt_arp:
-                # self.write_log_object.write_log_txt("arp_dpid="+str(dpid))
-                # self.write_log_object.write_log_txt("arp_src_ip="+str(pkt_arp.src_ip))
-                # self.write_log_object.write_log_txt("arp_dst_ip="+str(pkt_arp.dst_ip))
-                # self.write_log_object.write_log_txt("arp_in_port="+str(in_port))
-                # self._handle_arp(datapath, in_port, eth, pkt_arp)
+        if eth.ethertype ==ether_types.ETH_TYPE_ARP:
+                self._handle_arp(datapath, in_port, pkt)
                 # return
 
         dst = eth.dst
         src = eth.src
-
+        # if dst=='ff:ff:ff:ff:ff:ff': #這邊有點小問號
+        #     return
         # ------- 測試 ---------------------------#
         print('packet in is table_id='+str(self.table_id))
         if pkt.get_protocols(ipv4.ipv4):
@@ -885,6 +945,8 @@ class SimpleSwitch15(app_manager.RyuApp):
             self.ipv4_dst = self.ipv4.dst
             self.ipv4_protocol=self.ipv4.proto
             self.ipv4_services=self.ipv4.tos
+            if self.ipv4_src=='0.0.0.0':
+                return
 
         if pkt.get_protocols(tcp.tcp):
             self.tcp=pkt.get_protocols(tcp.tcp)[0]
@@ -899,13 +961,13 @@ class SimpleSwitch15(app_manager.RyuApp):
             print("ipv4_dst="+str(self.ipv4_dst))
 
         #將資料寫到log檔
-        if pkt.get_protocols(tcp.tcp):
+        # if pkt.get_protocols(tcp.tcp):
             # self.write_log_object.write_log_txt("-----------------")
             # # self.write_log_object.write_log_txt("ev="+str(ev))
             # # self.write_log_object.write_log_txt("ev.msg="+str(msg))
             # self.write_log_object.write_log_txt("packet in is table_id="+str(self.table_id))
-            self.write_log_object.write_log_txt("packet_timestamp="+str(self.packet_timestamp))
-            self.write_log_object.write_log_txt("packet_datetime="+str(self.packet_datetime))
+            # self.write_log_object.write_log_txt("packet_timestamp="+str(self.packet_timestamp))
+            # self.write_log_object.write_log_txt("packet_datetime="+str(self.packet_datetime))
             # self.write_log_object.write_log_txt("ev.msg.data="+str(self.data))
             # # self.write_log_object.write_log_txt("datapath="+str(datapath))
             # # self.write_log_object.write_log_txt("parser="+str(parser))
@@ -1179,11 +1241,12 @@ class SimpleSwitch15(app_manager.RyuApp):
                         #---政策(Policy)_4 前資料儲存-------------------------------------------#
                         self.temp={}
                         self.temp['Src_Address']=self.ipv4_src
+                        self.temp['Dst_Address']=self.ipv4_dst
                         self.temp['function_code']=[]
                         self.temp['function_code'].append(mb.fun_code)
 
                         if len(modbus_tcp_function_list)>0:
-                            a=[temp for temp in modbus_tcp_function_list if temp['Src_Address']==self.ipv4_src] #搜尋是否有在 Modbus_Tcp_Packet_In_Information_Table裡面
+                            a=[temp for temp in modbus_tcp_function_list if temp['Src_Address']==self.ipv4_src and temp['Dst_Address']==self.ipv4_dst ] #搜尋是否有在 Modbus_Tcp_Packet_In_Information_Table裡面
                             if len(a)>0:
                                 for k in range(len(modbus_tcp_function_list)):
                                     if self.ipv4_src==modbus_tcp_function_list[k]['Src_Address']:
@@ -1234,8 +1297,8 @@ class SimpleSwitch15(app_manager.RyuApp):
                     if len(modbus_tcp_function_list[i]['function_code'])==4:
                         self.Moubus_Tcp_Function_Count_Table=Counter(modbus_tcp_function_list[i]['function_code'])
                         # self.write_log_object.write_log_txt('Moubus_Tcp_Function_Count_Table='+str(self.Moubus_Tcp_Function_Count_Table))
-                        for j in range(15):
-                            if self.Moubus_Tcp_Function_Count_Table[j]>2:
+                        for j in range(15): # modbus tcp function有幾種
+                            if self.Moubus_Tcp_Function_Count_Table[j]>3: #這邊有調整(原本為2)
                                 self.priority=20
                                 self.table_3_match_1= parser.OFPMatch(eth_type=0x0800,ipv4_src=modbus_tcp_function_list[i]['Src_Address'])
                                 self.table_3_actions=[]
