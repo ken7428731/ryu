@@ -117,23 +117,23 @@ class SimpleSwitch15(app_manager.RyuApp):
                         self.tempp['model']=1
                         self.tempp['Start']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
                         self.tempp['Range']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['End']-temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
-                        if self.tempp['Range']>0:
+                        if self.tempp['Range']>=0:
                             self.tempp['Range']=self.tempp['Range']+1
                     elif temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['model']=='X_Input':
                         self.tempp['model']=2
                         self.tempp['Start']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
                         self.tempp['Range']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['End']-temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
-                        if self.tempp['Range']>0:
+                        if self.tempp['Range']>=0:
                             self.tempp['Range']=self.tempp['Range']+1
                     elif temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['model']=='D':
                         self.tempp['model']=3
                         self.tempp['Start']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
                         self.tempp['Range']=temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['End']-temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]['Start']
-                        if self.tempp['Range']>0:
+                        if self.tempp['Range']>=0:
                             self.tempp['Range']=self.tempp['Range']+1
                     temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]=self.tempp
             SCADA_Information_List=temp
-            # self.write_log_object.write_log_txt('Load_SCADA_Information_before='+str(temp))
+            # # self.write_log_object.write_log_txt('Load_SCADA_Information_before='+str(temp))
             if len(temp_SCADA_Information_List)>0:
                 if temp_SCADA_Information_List!=SCADA_Information_List:
                     self.Set_Device_Information_List()
@@ -163,7 +163,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                             if len(a)<=0:
                                 self.ttemp['HMI_Device_IP'].append(temp_SCADA_Information_List['HMI_Device_IP'][i])
                                 self.del_Factory_Block_Table(temp_SCADA_Information_List['HMI_Device_IP'][i])
-                                # self.write_log_object.write_log_txt('HMI Delete='+str(temp_SCADA_Information_List['HMI_Device_IP'][i]))
+                                # # self.write_log_object.write_log_txt('HMI Delete='+str(temp_SCADA_Information_List['HMI_Device_IP'][i]))
                         temp_list.append(self.ttemp)
                     if len(SCADA_Information_List['PLC_Device'])>len(temp_SCADA_Information_List['PLC_Device']):
                         self.ttemp={}
@@ -174,7 +174,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                                 self.tttemp={}
                                 self.tttemp['IP']=SCADA_Information_List['PLC_Device'][i]['IP']
                                 self.ttemp['PLC_Device'].append(self.tttemp)
-                                # self.write_log_object.write_log_txt('add self.ttemp='+str(self.ttemp))
+                                # # self.write_log_object.write_log_txt('add self.ttemp='+str(self.ttemp))
                                 self.add_prottect_Device(SCADA_Information_List['PLC_Device'][i]['IP'])
                         temp_list.append(self.ttemp)
 
@@ -198,7 +198,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                                 self.tttemp={}
                                 self.tttemp['IP']=temp_SCADA_Information_List['PLC_Device'][i]['IP']
                                 self.ttemp['PLC_Device'].append(self.tttemp)
-                                # self.write_log_object.write_log_txt('del self.ttemp='+str(self.ttemp))
+                                # # self.write_log_object.write_log_txt('del self.ttemp='+str(self.ttemp))
                                 self.del_prottect_Device(temp_SCADA_Information_List['PLC_Device'][i]['IP'])
                         temp_list.append(self.ttemp)
 
@@ -210,7 +210,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                             if len(a)<=0:
                                 self.ttemp['Facyory_Device_IP'].append(SCADA_Information_List['Facyory_Device_IP'][i])
                                 self.add_Factory_Block_Table(SCADA_Information_List['Facyory_Device_IP'][i])
-                                self.write_log_object.write_log_txt('add_self.ttemp='+str(self.ttemp))
+                                # self.write_log_object.write_log_txt('add_self.ttemp='+str(self.ttemp))
                         temp_list.append(self.ttemp)
                     elif len(SCADA_Information_List['Facyory_Device_IP'])==len(temp_SCADA_Information_List['Facyory_Device_IP']):
                         self.ttemp={}
@@ -229,7 +229,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                             if len(a)<=0:
                                 self.ttemp['Facyory_Device_IP'].append(temp_SCADA_Information_List['Facyory_Device_IP'][i])
                                 self.del_Factory_Block_Table(temp_SCADA_Information_List['Facyory_Device_IP'][i])
-                                self.write_log_object.write_log_txt('del_self.ttemp='+str(self.ttemp))
+                                # self.write_log_object.write_log_txt('del_self.ttemp='+str(self.ttemp))
                         temp_list.append(self.ttemp)
 
                     if len(SCADA_Information_List['Allow_Service_IP'])>len(temp_SCADA_Information_List['Allow_Service_IP']):
@@ -240,7 +240,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                             if len(a)<=0:
                                 self.ttemp['Allow_Service_IP'].append(SCADA_Information_List['Allow_Service_IP'][i])
                                 self.add_Factory_Block_Table(SCADA_Information_List['Allow_Service_IP'][i])
-                                self.write_log_object.write_log_txt('add_self.ttemp='+str(self.ttemp))
+                                # self.write_log_object.write_log_txt('add_self.ttemp='+str(self.ttemp))
                         temp_list.append(self.ttemp)
                     elif len(SCADA_Information_List['Allow_Service_IP'])==len(temp_SCADA_Information_List['Allow_Service_IP']):
                         self.ttemp={}
@@ -259,7 +259,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                             if len(a)<=0:
                                 self.ttemp['Allow_Service_IP'].append(temp_SCADA_Information_List['Allow_Service_IP'][i])
                                 self.del_Factory_Block_Table(temp_SCADA_Information_List['Allow_Service_IP'][i])
-                                self.write_log_object.write_log_txt('del_self.ttemp='+str(self.ttemp))
+                                # self.write_log_object.write_log_txt('del_self.ttemp='+str(self.ttemp))
                         temp_list.append(self.ttemp)
                     if SCADA_Information_List['PLC_Allow_Connect_number']>temp_SCADA_Information_List['PLC_Allow_Connect_number']:
                         self.del_policy_3_all_block_flow()
@@ -267,13 +267,13 @@ class SimpleSwitch15(app_manager.RyuApp):
                     #     self.del_policy_3_all_block_flow()
 
 
-                    self.write_log_object.write_log_txt('Device_information_is_change_after='+str(temp_list))
+                    # self.write_log_object.write_log_txt('Device_information_is_change_after='+str(temp_list))
                     temp_SCADA_Information_List=copy.deepcopy(SCADA_Information_List)
                     
             else:
                 temp_SCADA_Information_List=copy.deepcopy(SCADA_Information_List)
             
-            # self.write_log_object.write_log_txt('Load_SCADA_Information='+str(SCADA_Information_List))
+            # # self.write_log_object.write_log_txt('Load_SCADA_Information='+str(SCADA_Information_List))
             temp_list=[]
             hub.sleep(1)
     def add_prottect_Device(self,prottect_ip=None):
@@ -311,7 +311,7 @@ class SimpleSwitch15(app_manager.RyuApp):
             self.table_2_match= self.datapath.ofproto_parser.OFPMatch()
             self.delete_flow(self.datapath,RULE_2_TABLE,self.priority,self.table_2_match)
             rule_3_set_state_list[i]['rule_3_set_all_packet_block']='False'
-        self.write_log_object.write_log_txt('del_policy_3_all_block_flow is on')
+        # self.write_log_object.write_log_txt('del_policy_3_all_block_flow is on')
         
     def Set_Device_Information_List(self):
         global Device_IP_List
@@ -328,7 +328,7 @@ class SimpleSwitch15(app_manager.RyuApp):
             if len(SCADA_Information_List['Allow_Service_IP'])>0:
                 for i in range(len(SCADA_Information_List['Allow_Service_IP'])):
                     Device_IP_List.append(SCADA_Information_List['Allow_Service_IP'][i])
-            self.write_log_object.write_log_txt('Device_IP_List= '+str(Device_IP_List))
+            # self.write_log_object.write_log_txt('Device_IP_List= '+str(Device_IP_List))
         hub.sleep(1)
     def Record_set_flow_entry(self,datapath,table_id,priority,rule,one_ip,two_ip=None,inst=0,actions=None):
         global flow_entry_list_json
@@ -369,7 +369,7 @@ class SimpleSwitch15(app_manager.RyuApp):
             self.temp_json['one_ip']=one_ip
             self.temp_json['actions']=actions
             flow_entry_list_json.append(self.temp_json)
-        self.write_log_object.write_log_txt('Record_set_flow_entry='+str(flow_entry_list_json))
+        # self.write_log_object.write_log_txt('Record_set_flow_entry='+str(flow_entry_list_json))
     def Set_change_Device_Information(self,before_ip,after_ip):
         global SCADA_Information_List
         global flow_entry_list_json
@@ -419,30 +419,30 @@ class SimpleSwitch15(app_manager.RyuApp):
                 self.add_flow(self.datapath,self.table_id,self.priority,self.temp_after_match_2,inst=self.inst)
                 self.Record_set_flow_entry(self.datapath,self.table_id,self.priority,3,self.after_one_ip,self.after_two_ip,inst=self.inst)
             elif ((flow_entry_list_json[i]['rule']==1) or (flow_entry_list_json[i]['rule']==2) or (flow_entry_list_json[i]['rule']==4) or (flow_entry_list_json[i]['rule']==5)) and (flow_entry_list_json[i]['one_ip']==before_ip):
-                self.write_log_object.write_log_txt('change_before')
+                # self.write_log_object.write_log_txt('change_before')
                 self.datapath=flow_entry_list_json[i]['datapath']
                 self.parser=self.datapath.ofproto_parser
                 self.table_id=flow_entry_list_json[i]['table_id']
                 self.priority=flow_entry_list_json[i]['priority']
                 self.actions=flow_entry_list_json[i]['actions']
                 self.rule_id=flow_entry_list_json[i]['rule']
-                # self.write_log_object.write_log_txt('change_before_'+str(flow_entry_list_json[i]['rule'])+',datapath='+str(self.datapath))
-                # self.write_log_object.write_log_txt('change_before_'+str(flow_entry_list_json[i]['rule'])+',table_id='+str(self.table_id))
-                # self.write_log_object.write_log_txt('change_before_'+str(flow_entry_list_json[i]['rule'])+',priority='+str(self.priority))
+                # # self.write_log_object.write_log_txt('change_before_'+str(flow_entry_list_json[i]['rule'])+',datapath='+str(self.datapath))
+                # # self.write_log_object.write_log_txt('change_before_'+str(flow_entry_list_json[i]['rule'])+',table_id='+str(self.table_id))
+                # # self.write_log_object.write_log_txt('change_before_'+str(flow_entry_list_json[i]['rule'])+',priority='+str(self.priority))
                 self.temp_before_match_1= self.parser.OFPMatch(eth_type=0x0800,ipv4_src=before_ip)
                 self.delete_flow(self.datapath,self.table_id,self.priority,self.temp_before_match_1)
-                # self.write_log_object.write_log_txt('delete is ok')
-                # self.write_log_object.write_log_txt('flow_entry_list_json_before='+str(flow_entry_list_json))
-                # self.write_log_object.write_log_txt('flow_entry_list_json_after='+str(flow_entry_list_json))
-                # self.write_log_object.write_log_txt('change_policy_'+str(flow_entry_list_json[i]['rule'])+',datapath='+str(self.datapath))
-                # self.write_log_object.write_log_txt('change_policy_'+str(flow_entry_list_json[i]['rule'])+',table_id='+str(self.table_id))
-                # self.write_log_object.write_log_txt('change_policy_'+str(flow_entry_list_json[i]['rule'])+',priority='+str(self.priority))
+                # # self.write_log_object.write_log_txt('delete is ok')
+                # # self.write_log_object.write_log_txt('flow_entry_list_json_before='+str(flow_entry_list_json))
+                # # self.write_log_object.write_log_txt('flow_entry_list_json_after='+str(flow_entry_list_json))
+                # # self.write_log_object.write_log_txt('change_policy_'+str(flow_entry_list_json[i]['rule'])+',datapath='+str(self.datapath))
+                # # self.write_log_object.write_log_txt('change_policy_'+str(flow_entry_list_json[i]['rule'])+',table_id='+str(self.table_id))
+                # # self.write_log_object.write_log_txt('change_policy_'+str(flow_entry_list_json[i]['rule'])+',priority='+str(self.priority))
                 self.temp_after_match_1= self.parser.OFPMatch(eth_type=0x0800,ipv4_src=after_ip)
                 self.Set_Change_global_list(before_ip,after_ip)
-                # self.write_log_object.write_log_txt('change_policy_'+str(self.rule_id)+',temp_after_match_1='+str(self.temp_after_match_1))
-                # self.write_log_object.write_log_txt('change_policy_'+str(self.rule_id)+',actions='+str(self.actions))
+                # # self.write_log_object.write_log_txt('change_policy_'+str(self.rule_id)+',temp_after_match_1='+str(self.temp_after_match_1))
+                # # self.write_log_object.write_log_txt('change_policy_'+str(self.rule_id)+',actions='+str(self.actions))
                 self.add_flow(self.datapath,self.table_id, self.priority, self.temp_after_match_1,actions=self.actions)
-                # self.write_log_object.write_log_txt('change_after')
+                # # self.write_log_object.write_log_txt('change_after')
                 del flow_entry_list_json[i]
                 self.Record_set_flow_entry(self.datapath,self.table_id,self.priority,self.rule_id,after_ip,actions=self.actions)
     
@@ -459,38 +459,38 @@ class SimpleSwitch15(app_manager.RyuApp):
                     Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address']=after_ip
                 if Modbus_Tcp_Packet_In_Information_Table[i]['Dst_Address']==before_ip:
                     Modbus_Tcp_Packet_In_Information_Table[i]['Dst_Address']=after_ip
-            self.write_log_object.write_log_txt('Set_change_Device_Information_Modbus_Tcp_Packet_In_Information_Table='+str(Modbus_Tcp_Packet_In_Information_Table))
+            # self.write_log_object.write_log_txt('Set_change_Device_Information_Modbus_Tcp_Packet_In_Information_Table='+str(Modbus_Tcp_Packet_In_Information_Table))
         if len(Modbus_Tcp_Syn_Information_Table)>0:
             for i in range(len(Modbus_Tcp_Syn_Information_Table)):
                 if Modbus_Tcp_Syn_Information_Table[i]['Src_Address']==before_ip:
                     Modbus_Tcp_Syn_Information_Table[i]['Src_Address']=after_ip
                 if Modbus_Tcp_Syn_Information_Table[i]['Dst_Address']==before_ip:
                     Modbus_Tcp_Syn_Information_Table[i]['Dst_Address']=after_ip
-            self.write_log_object.write_log_txt('Set_change_Device_Information_Modbus_Tcp_Syn_Information_Table='+str(Modbus_Tcp_Syn_Information_Table))
+            # self.write_log_object.write_log_txt('Set_change_Device_Information_Modbus_Tcp_Syn_Information_Table='+str(Modbus_Tcp_Syn_Information_Table))
         if len(Modbus_Tcp_Connection_Information_Table)>0:
             for i in range(len(Modbus_Tcp_Connection_Information_Table)):
                 if Modbus_Tcp_Connection_Information_Table[i]['Src_Address']==before_ip:
                     Modbus_Tcp_Connection_Information_Table[i]['Src_Address']=after_ip
                 if Modbus_Tcp_Connection_Information_Table[i]['Dst_Address']==before_ip:
                     Modbus_Tcp_Connection_Information_Table[i]['Dst_Address']=after_ip
-            self.write_log_object.write_log_txt('Set_change_Device_Information_Modbus_Tcp_Connection_Information_Table='+str(Modbus_Tcp_Connection_Information_Table))
+            # self.write_log_object.write_log_txt('Set_change_Device_Information_Modbus_Tcp_Connection_Information_Table='+str(Modbus_Tcp_Connection_Information_Table))
         if len(modbus_tcp_function_list)>0:
             for i in range(len(modbus_tcp_function_list)):
                 if modbus_tcp_function_list[i]['Src_Address']==before_ip:
                     modbus_tcp_function_list[i]['Src_Address']=after_ip
-            self.write_log_object.write_log_txt('Set_change_Device_Information_modbus_tcp_function_list='+str(modbus_tcp_function_list))
+            # self.write_log_object.write_log_txt('Set_change_Device_Information_modbus_tcp_function_list='+str(modbus_tcp_function_list))
         if len(modbus_tcp_function_data_list)>0:
             for i in range(len(modbus_tcp_function_data_list)):
                 if modbus_tcp_function_data_list[i]['Src_Address']==before_ip:
                     modbus_tcp_function_data_list[i]['Src_Address']=after_ip
                 if modbus_tcp_function_data_list[i]['Dst_Address']==before_ip:
                     modbus_tcp_function_data_list[i]['Dst_Address']=after_ip
-            self.write_log_object.write_log_txt('Set_change_Device_Information_modbus_tcp_function_data_list='+str(modbus_tcp_function_data_list))
+            # self.write_log_object.write_log_txt('Set_change_Device_Information_modbus_tcp_function_data_list='+str(modbus_tcp_function_data_list))
         if len(Factory_Block_Table)>0:
             for i in range(len(Factory_Block_Table)):
                 if Factory_Block_Table[i]['Src_Address']==before_ip:
                     Factory_Block_Table[i]['Src_Address']=after_ip
-            self.write_log_object.write_log_txt('Set_change_Device_Information_Factory_Block_Table='+str(Factory_Block_Table))
+            # self.write_log_object.write_log_txt('Set_change_Device_Information_Factory_Block_Table='+str(Factory_Block_Table))
 
     def add_Factory_Block_Table(self,ip_address):
         if len(Factory_Block_Table)>0:
@@ -502,7 +502,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                 self.temp['Src_Address']=ip_address
                 self.temp['block_state']='False'
                 Factory_Block_Table.append(self.temp)
-            self.write_log_object.write_log_txt('add_Factory_Block_Table='+str(Factory_Block_Table))
+            # self.write_log_object.write_log_txt('add_Factory_Block_Table='+str(Factory_Block_Table))
     
     def del_Factory_Block_Table(self,ip_address):
         if len(Factory_Block_Table)>0:
@@ -511,7 +511,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                for i in range(len(Factory_Block_Table)):
                 if Factory_Block_Table[i]['Src_Address']==ip_address:
                     del Factory_Block_Table[i]
-            self.write_log_object.write_log_txt('del_Factory_Block_Table='+str(Factory_Block_Table))
+            # self.write_log_object.write_log_txt('del_Factory_Block_Table='+str(Factory_Block_Table))
 
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
@@ -526,7 +526,7 @@ class SimpleSwitch15(app_manager.RyuApp):
         self.temp['datapath']=datapath
         first_switch_features.append(self.temp)
         del self.temp
-        self.write_log_object.write_log_txt('first_switch_features='+str(first_switch_features))
+        # self.write_log_object.write_log_txt('first_switch_features='+str(first_switch_features))
 
         #--------新增一筆所有封包當阻擋的flow -------------#
         # start_default_match = parser.OFPMatch()
@@ -539,7 +539,7 @@ class SimpleSwitch15(app_manager.RyuApp):
         # t=threading.Thread(target=self.Load_SCADA_Information) #讀取 Device_Information.json，如果有做更改並在全域提醒
         # t.start()
         # self.Set_Device_Information_List()
-        # self.write_log_object.write_log_txt('SCADA_Information_List='+str(SCADA_Information_List))
+        # # self.write_log_object.write_log_txt('SCADA_Information_List='+str(SCADA_Information_List))
 
 
         # install table-miss flow entry
@@ -647,7 +647,7 @@ class SimpleSwitch15(app_manager.RyuApp):
         pkt.serialize()
         # self.logger.info("packet-out %s" % pkt)
         # print("packet-out "+str(pkt) +" ")
-        # self.write_log_object.write_log_txt('OvS_send_lldp_packet='+str(pkt))
+        # # self.write_log_object.write_log_txt('OvS_send_lldp_packet='+str(pkt))
         data = pkt.data
         match = ofp_parser.OFPMatch(in_port=ofproto.OFPP_CONTROLLER)
         actions = [ofp_parser.OFPActionOutput(port=port_no)]
@@ -669,11 +669,11 @@ class SimpleSwitch15(app_manager.RyuApp):
                 switch_topology.append(self.temp)        
         else:
             switch_topology.append(self.temp)
-        self.write_log_object.write_log_txt('switch_topology='+str(switch_topology))
+        # self.write_log_object.write_log_txt('switch_topology='+str(switch_topology))
     
     # Link two switch
     def switch_link(self,s_a,s_b):
-        self.write_log_object.write_log_txt(str(s_a) + '<--->' + str(s_b))
+        # self.write_log_object.write_log_txt(str(s_a) + '<--->' + str(s_b))
         return s_a + '<--->' + s_b
             
     def handle_lldp(self,dpid,in_port,lldp_pkt):
@@ -686,10 +686,10 @@ class SimpleSwitch15(app_manager.RyuApp):
         if lldp_in_port.decode('utf-8'):
             lldp_in_port_str=lldp_in_port.decode('utf-8')
 
-        self.write_log_object.write_log_txt('dpid='+str(dpid))
-        self.write_log_object.write_log_txt('in_port='+str(in_port))
-        self.write_log_object.write_log_txt('lldp_dpid='+str(lldp_dpid))
-        self.write_log_object.write_log_txt('lldp_in_port='+str(lldp_in_port))
+        # self.write_log_object.write_log_txt('dpid='+str(dpid))
+        # self.write_log_object.write_log_txt('in_port='+str(in_port))
+        # self.write_log_object.write_log_txt('lldp_dpid='+str(lldp_dpid))
+        # self.write_log_object.write_log_txt('lldp_in_port='+str(lldp_in_port))
 
         self.switch_lldp_list(int(dpid),int(in_port))
 
@@ -736,7 +736,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                     # print('add_flow='+str(mod))
                     datapath.send_msg(mod)# 把定義好的 FlowEntry 送給 Switch
             flow_entry_list=temp
-            # self.write_log_object.write_log_txt('add_flow='+str(temp))
+            # # self.write_log_object.write_log_txt('add_flow='+str(temp))
 
         if state=='rule':
             temp_flow_entry_list.append(str(mod))
@@ -745,7 +745,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                 if element not in temp:
                     temp.append(element)
             temp_flow_entry_list=temp
-            self.write_log_object.write_log_txt('add_flow(rule)='+str(temp_flow_entry_list))
+            # self.write_log_object.write_log_txt('add_flow(rule)='+str(temp_flow_entry_list))
     # def get_all_flow(self):
     #     temp
         
@@ -753,7 +753,7 @@ class SimpleSwitch15(app_manager.RyuApp):
     def delete_flow(self,datapath,table_id, priority, match, inst=0, actions=None): #刪除Flow (可以查看[1]的參考網址)
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
-        self.write_log_object.write_log_txt("delete_flow="+str(match))
+        # self.write_log_object.write_log_txt("delete_flow="+str(match))
         # if inst==0:
         #     inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
         #                                          actions)]
@@ -807,7 +807,7 @@ class SimpleSwitch15(app_manager.RyuApp):
     def delete_ip_to_port_table_lldp(self):
         global switch_topology
         self.temp_list=copy.deepcopy(self.ip_to_port)
-        # self.write_log_object.write_log_txt('is input delete_ip_to_port_table_lldp')
+        # # self.write_log_object.write_log_txt('is input delete_ip_to_port_table_lldp')
         if len(switch_topology)>0 and len(self.temp_list)>0:
             for i in range(len(switch_topology)):
                 if switch_topology[i]['dpid'] in self.temp_list:
@@ -820,7 +820,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                     for k in range(len(self.ttemp_list)):
                         del self.temp_list[switch_topology[i]['dpid']][self.ttemp_list[k]]
             self.ip_to_port=self.temp_list
-            self.write_log_object.write_log_txt('delete_ip_to_port_table_lldp_temp_list='+str(self.temp_list))
+            # self.write_log_object.write_log_txt('delete_ip_to_port_table_lldp_temp_list='+str(self.temp_list))
         del self.temp_list
 
 
@@ -843,9 +843,9 @@ class SimpleSwitch15(app_manager.RyuApp):
         # print('packet_datetime= '+str(self.packet_datetime))
 
         msg = ev.msg
-        # self.write_log_object.write_log_txt("ev.msg="+str(msg))
+        # # self.write_log_object.write_log_txt("ev.msg="+str(msg))
         datapath = msg.datapath
-        # self.write_log_object.write_log_txt('datapath='+str(datapath))
+        # # self.write_log_object.write_log_txt('datapath='+str(datapath))
         dpid = datapath.id # Switch 的 datapath id (獨一無二的 ID)
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
@@ -864,13 +864,13 @@ class SimpleSwitch15(app_manager.RyuApp):
                 t = threading.Thread(target = self.handle_lldp(dpid, in_port, pkt_lldp))
                 t.start()                
                 return
-        if eth.ethertype ==ether_types.ETH_TYPE_ARP:
-            pkt_arp=pkt.get_protocol(arp.arp)
-            if pkt_arp:
-                self.write_log_object.write_log_txt("arp_dpid="+str(dpid))
-                self.write_log_object.write_log_txt("arp_src_ip="+str(pkt_arp.src_ip))
-                self.write_log_object.write_log_txt("arp_dst_ip="+str(pkt_arp.dst_ip))
-                self.write_log_object.write_log_txt("arp_in_port="+str(in_port))
+        # if eth.ethertype ==ether_types.ETH_TYPE_ARP:
+        #     pkt_arp=pkt.get_protocol(arp.arp)
+        #     if pkt_arp:
+                # self.write_log_object.write_log_txt("arp_dpid="+str(dpid))
+                # self.write_log_object.write_log_txt("arp_src_ip="+str(pkt_arp.src_ip))
+                # self.write_log_object.write_log_txt("arp_dst_ip="+str(pkt_arp.dst_ip))
+                # self.write_log_object.write_log_txt("arp_in_port="+str(in_port))
                 # self._handle_arp(datapath, in_port, eth, pkt_arp)
                 # return
 
@@ -900,28 +900,28 @@ class SimpleSwitch15(app_manager.RyuApp):
 
         #將資料寫到log檔
         if pkt.get_protocols(tcp.tcp):
-            self.write_log_object.write_log_txt("-----------------")
-            # self.write_log_object.write_log_txt("ev="+str(ev))
-            # self.write_log_object.write_log_txt("ev.msg="+str(msg))
-            self.write_log_object.write_log_txt("packet in is table_id="+str(self.table_id))
+            # self.write_log_object.write_log_txt("-----------------")
+            # # self.write_log_object.write_log_txt("ev="+str(ev))
+            # # self.write_log_object.write_log_txt("ev.msg="+str(msg))
+            # self.write_log_object.write_log_txt("packet in is table_id="+str(self.table_id))
             self.write_log_object.write_log_txt("packet_timestamp="+str(self.packet_timestamp))
             self.write_log_object.write_log_txt("packet_datetime="+str(self.packet_datetime))
             # self.write_log_object.write_log_txt("ev.msg.data="+str(self.data))
-            # self.write_log_object.write_log_txt("datapath="+str(datapath))
-            # self.write_log_object.write_log_txt("parser="+str(parser))
-            self.write_log_object.write_log_txt("in_port="+str(in_port))
-            self.write_log_object.write_log_txt("pkt="+str(pkt))
+            # # self.write_log_object.write_log_txt("datapath="+str(datapath))
+            # # self.write_log_object.write_log_txt("parser="+str(parser))
+            # self.write_log_object.write_log_txt("in_port="+str(in_port))
+            # self.write_log_object.write_log_txt("pkt="+str(pkt))
             # self.write_log_object.write_log_txt("pkt_len="+str(self.pkt.__len__()))
-            self.write_log_object.write_log_txt("eth="+str(eth))
-            self.write_log_object.write_log_txt("eth_dst="+str(dst))
-            self.write_log_object.write_log_txt("eth_src="+str(src))
-            # self.write_log_object.write_log_txt("ipv4="+str(self.ipv4))
-            self.write_log_object.write_log_txt("ipv4.src="+str(self.ipv4_src))
-            self.write_log_object.write_log_txt("ipv4.dst="+str(self.ipv4_dst))
-            # self.write_log_object.write_log_txt("tcp="+str(self.tcp))
-            self.write_log_object.write_log_txt("tcp_src_port="+str(self.tcp_src_port))
-            self.write_log_object.write_log_txt("tcp_dst_port="+str(self.tcp_dst_port))
-            self.write_log_object.write_log_txt("tcp_seq_number="+str(self.tcp_seq_number))
+            # self.write_log_object.write_log_txt("eth="+str(eth))
+            # self.write_log_object.write_log_txt("eth_dst="+str(dst))
+            # self.write_log_object.write_log_txt("eth_src="+str(src))
+            # # self.write_log_object.write_log_txt("ipv4="+str(self.ipv4))
+            # self.write_log_object.write_log_txt("ipv4.src="+str(self.ipv4_src))
+            # self.write_log_object.write_log_txt("ipv4.dst="+str(self.ipv4_dst))
+            # # self.write_log_object.write_log_txt("tcp="+str(self.tcp))
+            # self.write_log_object.write_log_txt("tcp_src_port="+str(self.tcp_src_port))
+            # self.write_log_object.write_log_txt("tcp_dst_port="+str(self.tcp_dst_port))
+            # self.write_log_object.write_log_txt("tcp_seq_number="+str(self.tcp_seq_number))
 
         #--政策(Policy)_1-----------------------------------------------------#
         if pkt.get_protocols(ipv4.ipv4) and (self.table_id==RULE_1_TABLE or self.table_id==RULE_2_TABLE):
@@ -963,11 +963,11 @@ class SimpleSwitch15(app_manager.RyuApp):
                 Factory_Block_Table.append(self.temp3)
 
             print('----------Rule information------------')
-            self.write_log_object.write_log_txt('----------Rule information------------')
+            # self.write_log_object.write_log_txt('----------Rule information------------')
             print('Modbus_Tcp_Packet_In_Information_Table= '+str(Modbus_Tcp_Packet_In_Information_Table))
-            self.write_log_object.write_log_txt('Modbus_Tcp_Packet_In_Information_Table= '+str(Modbus_Tcp_Packet_In_Information_Table))
+            # self.write_log_object.write_log_txt('Modbus_Tcp_Packet_In_Information_Table= '+str(Modbus_Tcp_Packet_In_Information_Table))
             print('Factory_Block_Table= '+str(Factory_Block_Table))
-            self.write_log_object.write_log_txt('Factory_Block_Table= '+str(Factory_Block_Table))
+            # self.write_log_object.write_log_txt('Factory_Block_Table= '+str(Factory_Block_Table))
         #----- 政策(Policy)_1 判斷進來的封包是否在白名單裡面---------#
         if len(Modbus_Tcp_Packet_In_Information_Table)>0 :
             for i in range(len(Modbus_Tcp_Packet_In_Information_Table)):
@@ -983,7 +983,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                             # self.Record_set_flow_entry(datapath,RULE_1_TABLE,self.priority,1,Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address'],actions=self.table_0_action_1)
                             self.add_flow(datapath,RULE_0_TABLE, self.priority, self.table_0_match_1, 0,self.table_0_action_1,state='rule') #在table 0比對到 往table 1送
                             self.Record_set_flow_entry(datapath,RULE_0_TABLE,self.priority,1,Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address'],actions=self.table_0_action_1)
-                            self.write_log_object.write_log_txt('dpid_set_block(policy_1)='+str(dpid))
+                            # self.write_log_object.write_log_txt('dpid_set_block(policy_1)='+str(dpid))
                             self.write_log_object.write_log_txt('ip_is_block(policy_1)='+str(Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address']))
 
         #-----------(先將有送往PLC的封包且是TCP的送往 Packet_in)-------------------------------------------#
@@ -1010,7 +1010,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                         self.ttemp_date_list['Dst_Port']=self.tcp_dst_port
                         self.ttemp_date_list['Syn_Time']=self.packet_timestamp
                         Modbus_Tcp_Syn_Information_Table.append(self.ttemp_date_list)
-            # self.write_log_object.write_log_txt('Modbus_Tcp_Syn_Information_Table='+str(Modbus_Tcp_Syn_Information_Table))
+            # # self.write_log_object.write_log_txt('Modbus_Tcp_Syn_Information_Table='+str(Modbus_Tcp_Syn_Information_Table))
 
             #-----計算syn數量-------------------#
             Modbus_Tcp_Syn_Count_Table=[]
@@ -1031,7 +1031,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                         self.temp_data['Src_Port']=Modbus_Tcp_Syn_Information_Table[i]['Src_Port']
                         self.temp_data['Syn_Count']=0
                         Modbus_Tcp_Syn_Count_Table.append(self.temp_data)
-                self.write_log_object.write_log_txt('Modbus_Tcp_Syn_Information_Table='+str(Modbus_Tcp_Syn_Information_Table))
+                # self.write_log_object.write_log_txt('Modbus_Tcp_Syn_Information_Table='+str(Modbus_Tcp_Syn_Information_Table))
         #----- 政策(Policy)_2 判斷 syn是否超過1次以上-------#
             if len(Modbus_Tcp_Syn_Count_Table)>0:
                 for i in range(len(Modbus_Tcp_Syn_Count_Table)):
@@ -1047,11 +1047,11 @@ class SimpleSwitch15(app_manager.RyuApp):
                                     Factory_Block_Table[k]['block_state']='True'
                                     self.add_flow(datapath,RULE_1_TABLE, self.priority, self.table_1_match_1, 0,self.table_1_actions,state='rule') #在table 2比對到 往table 2送
                                     self.Record_set_flow_entry(datapath,RULE_1_TABLE,self.priority,2,Modbus_Tcp_Syn_Count_Table[i]['Src_Address'],actions=self.table_1_actions)
-                                    self.write_log_object.write_log_txt('dpid_set_block(policy_2)='+str(dpid))
+                                    # self.write_log_object.write_log_txt('dpid_set_block(policy_2)='+str(dpid))
                                     self.write_log_object.write_log_txt('ip_is_block(policy_2)='+str(Modbus_Tcp_Syn_Count_Table[i]['Src_Address']))
                                     
 
-                self.write_log_object.write_log_txt('Modbus_Tcp_Syn_Count_Table='+str(Modbus_Tcp_Syn_Count_Table))
+                # self.write_log_object.write_log_txt('Modbus_Tcp_Syn_Count_Table='+str(Modbus_Tcp_Syn_Count_Table))
 
 
          #--政策(Policy)_3 前資料儲存----------------------------------------------------------#
@@ -1073,8 +1073,8 @@ class SimpleSwitch15(app_manager.RyuApp):
                                 self.temp_date_list['Set_flow_stat']='False'
                                 if rule_table_2_set_list!=Modbus_Tcp_Connection_Information_Table:
                                     rule_table_2_set_list.append(self.temp_date_list)
-                                self.write_log_object.write_log_txt("Modbus_Tcp_Connection_Information_Table(syn、ack)="+str(Modbus_Tcp_Connection_Information_Table))
-                                self.write_log_object.write_log_txt("rule_table_2_set_list_before="+str(rule_table_2_set_list))
+                                # self.write_log_object.write_log_txt("Modbus_Tcp_Connection_Information_Table(syn、ack)="+str(Modbus_Tcp_Connection_Information_Table))
+                                # self.write_log_object.write_log_txt("rule_table_2_set_list_before="+str(rule_table_2_set_list))
                             elif self.tcp_src_port==SCADA_Information_List['PLC_Device'][i]['Port'][j] and self.tcp.has_flags(tcp.TCP_FIN,tcp.TCP_ACK):
                                 if len(Modbus_Tcp_Connection_Information_Table)>0:
                                     Modbus_Tcp_Connection_Information_Table_len=len(Modbus_Tcp_Connection_Information_Table)
@@ -1082,7 +1082,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                                         if Modbus_Tcp_Connection_Information_Table[k]['Src_Address']==self.ipv4_dst and Modbus_Tcp_Connection_Information_Table[k]['Dst_Address']==self.ipv4_src and Modbus_Tcp_Connection_Information_Table[k]['Src_Port']==self.tcp_dst_port and Modbus_Tcp_Connection_Information_Table[k]['Dst_Port']==self.tcp_src_port:
                                             Modbus_Tcp_Connection_Information_Table[k]['Fin_Time']=self.packet_timestamp
                                             Modbus_Tcp_Connection_Information_Table[k]['Duration_Time']=Modbus_Tcp_Connection_Information_Table[k]['Fin_Time']-Modbus_Tcp_Connection_Information_Table[k]['Syn_Time']
-                                    self.write_log_object.write_log_txt("Modbus_Tcp_Connection_Information_Table(fin、ack)="+str(Modbus_Tcp_Connection_Information_Table))
+                                    # self.write_log_object.write_log_txt("Modbus_Tcp_Connection_Information_Table(fin、ack)="+str(Modbus_Tcp_Connection_Information_Table))
         
         #------------------------------------------------------------------------#
         #-------- 計算 tcp connect ip 數量----------------------------#
@@ -1109,7 +1109,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                             Modbus_Tcp_Connect_Count_Table[i]['Connect_Count']=Modbus_Tcp_Connect_Count_Table[i]['Connect_Count']+1
 
             # print('Modbus_Tcp_Connect_Count_Table='+str(Modbus_Tcp_Connect_Count_Table))
-            self.write_log_object.write_log_txt('Modbus_Tcp_Connect_Count_Table='+str(Modbus_Tcp_Connect_Count_Table))
+            # self.write_log_object.write_log_txt('Modbus_Tcp_Connect_Count_Table='+str(Modbus_Tcp_Connect_Count_Table))
         
         #------------- 政策(Policy)_3  判斷 使用 tcp connect ip 數量 去阻擋------------------------#
         if len(Modbus_Tcp_Connect_Count_Table)>0:
@@ -1127,7 +1127,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                             self.Record_set_flow_entry(datapath,RULE_2_TABLE,self.priority,3,Modbus_Tcp_Connection_Information_Table[i]['Src_Address'],Modbus_Tcp_Connection_Information_Table[i]['Dst_Address'],inst=self.table_2_inst_rule_1)
                             self.default_match_flow(datapath,ofproto,parser,RULE_3_TABLE)
                             rule_table_2_set_list[i]['Set_flow_stat']='True'
-                            self.write_log_object.write_log_txt("rule_table_2_set_list_after="+str(rule_table_2_set_list))
+                            # self.write_log_object.write_log_txt("rule_table_2_set_list_after="+str(rule_table_2_set_list))
                             self.temp={}
                             self.temp['datapath']=datapath
                             self.temp['dpid']=dpid
@@ -1138,7 +1138,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                                     rule_3_set_state_list.append(self.temp)    
                             else:
                                 rule_3_set_state_list.append(self.temp)
-                            self.write_log_object.write_log_txt("rule_3_set_state_list="+str(rule_3_set_state_list))
+                            # self.write_log_object.write_log_txt("rule_3_set_state_list="+str(rule_3_set_state_list))
             if len(rule_3_set_state_list)>0:
                 for k in range(len(rule_3_set_state_list)):
                     if (len(Modbus_Tcp_Connect_Count_Table)>=SCADA_Information_List['PLC_Allow_Connect_number']) and (rule_3_set_state_list[k]['datapath']==datapath) and rule_3_set_state_list[k]['rule_3_set_all_packet_block']=='False':
@@ -1152,30 +1152,30 @@ class SimpleSwitch15(app_manager.RyuApp):
         if pkt.get_protocols(tcp.tcp) and pkt.__len__()==4 and self.tcp.has_flags(tcp.TCP_PSH,tcp.TCP_ACK) and (self.table_id==RULE_2_TABLE or self.table_id==RULE_3_TABLE) :
             mb=modbus_tcp.modbus_tcp()
             mb.get_modbus_tcp(self.tcp_src_port,self.tcp_dst_port,pkt.__getitem__(3))
-            self.write_log_object.write_log_txt("****************")
-            self.write_log_object.write_log_txt("mb.t_id="+str(mb.t_id))
-            self.write_log_object.write_log_txt("mb.p_id="+str(mb.p_id))
-            self.write_log_object.write_log_txt("mb.modbus_len="+str(mb.modbus_len))
-            self.write_log_object.write_log_txt("mb.u_id="+str(mb.u_id))
+            # self.write_log_object.write_log_txt("****************")
+            # self.write_log_object.write_log_txt("mb.t_id="+str(mb.t_id))
+            # self.write_log_object.write_log_txt("mb.p_id="+str(mb.p_id))
+            # self.write_log_object.write_log_txt("mb.modbus_len="+str(mb.modbus_len))
+            # self.write_log_object.write_log_txt("mb.u_id="+str(mb.u_id))
             for i in range(len(SCADA_Information_List['PLC_Device'])): 
                 for j in range(len(SCADA_Information_List['PLC_Device'][i]['Port'])):
                     if self.ipv4_dst==SCADA_Information_List['PLC_Device'][i]['IP'] and self.tcp_dst_port==SCADA_Information_List['PLC_Device'][i]['Port'][j]: #request
                         print("*****request <<<<< *****")
                         print("mb.fun_code="+str(mb.fun_code))
-                        self.write_log_object.write_log_txt("*****request <<<<< *****")
-                        self.write_log_object.write_log_txt("mb.fun_code="+str(mb.fun_code))
+                        # self.write_log_object.write_log_txt("*****request <<<<< *****")
+                        # self.write_log_object.write_log_txt("mb.fun_code="+str(mb.fun_code))
                         if mb.fun_code==5:
                             print("mb.reference_number="+str(mb.reference_number))
                             print("mb.modbus_5_data="+str(mb.modbus_5_data))
-                            self.write_log_object.write_log_txt("mb.reference_number="+str(mb.reference_number))
-                            self.write_log_object.write_log_txt("mb.modbus_5_data="+str(mb.modbus_5_data))
+                            # self.write_log_object.write_log_txt("mb.reference_number="+str(mb.reference_number))
+                            # self.write_log_object.write_log_txt("mb.modbus_5_data="+str(mb.modbus_5_data))
                         else:
                             print("mb.reference_number="+str(mb.reference_number))
                             print("mb.Bit_Count="+str(mb.Bit_Count))
                             print("mb.data_lenth="+str(mb.data_lenth))
-                            self.write_log_object.write_log_txt("mb.reference_number="+str(mb.reference_number))
-                            self.write_log_object.write_log_txt("mb.Bit_Count="+str(mb.Bit_Count))                    
-                            self.write_log_object.write_log_txt("mb.data_lenth="+str(mb.data_lenth))
+                            # self.write_log_object.write_log_txt("mb.reference_number="+str(mb.reference_number))
+                            # self.write_log_object.write_log_txt("mb.Bit_Count="+str(mb.Bit_Count))                    
+                            # self.write_log_object.write_log_txt("mb.data_lenth="+str(mb.data_lenth))
                         #---政策(Policy)_4 前資料儲存-------------------------------------------#
                         self.temp={}
                         self.temp['Src_Address']=self.ipv4_src
@@ -1192,7 +1192,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                                 modbus_tcp_function_list.append(self.temp) 
                         else:
                             modbus_tcp_function_list.append(self.temp)
-                        self.write_log_object.write_log_txt('modbus_tcp_function_list_before='+str(modbus_tcp_function_list))
+                        # self.write_log_object.write_log_txt('modbus_tcp_function_list_before='+str(modbus_tcp_function_list))
                         #---政策(Policy)_5 前資料儲存-------------------------------------------#
                         self.tempp={}
                         self.tempp['Src_Address']=self.ipv4_src
@@ -1212,28 +1212,28 @@ class SimpleSwitch15(app_manager.RyuApp):
                                 modbus_tcp_function_data_list.append(self.tempp) 
                         else:
                             modbus_tcp_function_data_list.append(self.tempp)
-                        self.write_log_object.write_log_txt('modbus_tcp_function_data_list='+str(modbus_tcp_function_data_list))
+                        # self.write_log_object.write_log_txt('modbus_tcp_function_data_list='+str(modbus_tcp_function_data_list))
                     elif self.ipv4_src==SCADA_Information_List['PLC_Device'][i]['IP'] and self.tcp_src_port==SCADA_Information_List['PLC_Device'][i]['Port'][j]: #request
                         print("*****response >>>> *****")
                         print("mb.fun_code="+str(mb.fun_code))
-                        self.write_log_object.write_log_txt("*****response >>>> *****")
-                        self.write_log_object.write_log_txt("mb.fun_code="+str(mb.fun_code))
+                        # self.write_log_object.write_log_txt("*****response >>>> *****")
+                        # self.write_log_object.write_log_txt("mb.fun_code="+str(mb.fun_code))
                         if mb.fun_code==5:
                             print("mb.reference_number="+str(mb.reference_number))
                             print("mb.modbus_5_data="+str(mb.modbus_5_data))
-                            self.write_log_object.write_log_txt("mb.reference_number="+str(mb.reference_number))
-                            self.write_log_object.write_log_txt("mb.modbus_5_data="+str(mb.modbus_5_data))
+                            # self.write_log_object.write_log_txt("mb.reference_number="+str(mb.reference_number))
+                            # self.write_log_object.write_log_txt("mb.modbus_5_data="+str(mb.modbus_5_data))
                         else:
                             print("mb.byte_count="+str(mb.byte_count))
                             print("mb.modbus_data="+str(mb.modbus_data))
-                            self.write_log_object.write_log_txt("mb.byte_count="+str(mb.byte_count))
-                            self.write_log_object.write_log_txt("mb.modbus_data="+str(mb.modbus_data))
+                            # self.write_log_object.write_log_txt("mb.byte_count="+str(mb.byte_count))
+                            # self.write_log_object.write_log_txt("mb.modbus_data="+str(mb.modbus_data))
         #-----政策(Policy)_4 判斷 modbus tcp 重複 查詢是否連續3次以上----------------#      
             if len(modbus_tcp_function_list)>0:
                 for i in range(len(modbus_tcp_function_list)):
                     if len(modbus_tcp_function_list[i]['function_code'])==4:
                         self.Moubus_Tcp_Function_Count_Table=Counter(modbus_tcp_function_list[i]['function_code'])
-                        self.write_log_object.write_log_txt('Moubus_Tcp_Function_Count_Table='+str(self.Moubus_Tcp_Function_Count_Table))
+                        # self.write_log_object.write_log_txt('Moubus_Tcp_Function_Count_Table='+str(self.Moubus_Tcp_Function_Count_Table))
                         for j in range(15):
                             if self.Moubus_Tcp_Function_Count_Table[j]>2:
                                 self.priority=20
@@ -1244,11 +1244,11 @@ class SimpleSwitch15(app_manager.RyuApp):
                                         Factory_Block_Table[k]['block_state']='True'
                                         self.add_flow(datapath,RULE_3_TABLE, self.priority, self.table_3_match_1, 0,self.table_3_actions,state='rule') #在table 2比對到 往table 2送
                                         self.Record_set_flow_entry(datapath,RULE_3_TABLE,self.priority,4,modbus_tcp_function_list[i]['Src_Address'],actions=self.table_3_actions)
-                                        self.write_log_object.write_log_txt('dpid_set_block(policy_4)='+str(dpid))
+                                        # self.write_log_object.write_log_txt('dpid_set_block(policy_4)='+str(dpid))
                                         self.write_log_object.write_log_txt('ip_is_block(policy_4)='+str(modbus_tcp_function_list[i]['Src_Address']))
                                                         
                         modbus_tcp_function_list[i]['function_code']=[]
-                self.write_log_object.write_log_txt('modbus_tcp_function_list_after='+str(modbus_tcp_function_list))
+                # self.write_log_object.write_log_txt('modbus_tcp_function_list_after='+str(modbus_tcp_function_list))
         #----- 政策(Policy)_5 判斷modbus tcp 資料是否超過 範圍---------------------#
             if len(modbus_tcp_function_data_list)>0:
                 for i in range(len(modbus_tcp_function_data_list)):
@@ -1257,12 +1257,12 @@ class SimpleSwitch15(app_manager.RyuApp):
                             for k in range(len(SCADA_Information_List['PLC_Device'][j]['PLC_Device_GPIO_Open_State'])):
                                 if modbus_tcp_function_data_list[i]['function_code']==SCADA_Information_List['PLC_Device'][j]['PLC_Device_GPIO_Open_State'][k]['model'] and modbus_tcp_function_data_list[i]['reference_num']==SCADA_Information_List['PLC_Device'][j]['PLC_Device_GPIO_Open_State'][k]['Start'] and modbus_tcp_function_data_list[i]['bit_count']==SCADA_Information_List['PLC_Device'][j]['PLC_Device_GPIO_Open_State'][k]['Range']:
                                     print('Coil ok range')
-                                    self.write_log_object.write_log_txt('Coil ok range')
+                                    # self.write_log_object.write_log_txt('Coil ok range')
                                     break
                                 elif modbus_tcp_function_data_list[i]['function_code']==5 and SCADA_Information_List['PLC_Device'][j]['PLC_Device_GPIO_Open_State'][k]['model']==1 : #還未寫
                                     if modbus_tcp_function_data_list[i]['reference_num'] >=SCADA_Information_List['PLC_Device'][j]['PLC_Device_GPIO_Open_State'][k]['Start'] or modbus_tcp_function_data_list[i]['reference_num'] <=SCADA_Information_List['PLC_Device'][j]['PLC_Device_GPIO_Open_State'][k]['End']:
                                         print('write Coil ok range')
-                                        self.write_log_object.write_log_txt('write Coil ok range')
+                                        # self.write_log_object.write_log_txt('write Coil ok range')
                                         break
 
                                 if k==3:
@@ -1274,15 +1274,15 @@ class SimpleSwitch15(app_manager.RyuApp):
                                             Factory_Block_Table[k]['block_state']='True'
                                             self.add_flow(datapath,RULE_3_TABLE, self.priority, self.table_3_match_2, 0,self.table_3_actions,state='rule') #在table 2比對到 往table 2送
                                             self.Record_set_flow_entry(datapath,RULE_3_TABLE,self.priority,5,modbus_tcp_function_data_list[i]['Src_Address'],actions=self.table_3_actions)
-                                            self.write_log_object.write_log_txt('dpid_set_block(policy_5)='+str(dpid))
+                                            # self.write_log_object.write_log_txt('dpid_set_block(policy_5)='+str(dpid))
                                             self.write_log_object.write_log_txt('ip_is_block(policy_5)='+str(modbus_tcp_function_data_list[i]['Src_Address']))
                                     print('not ok range')
-                                    self.write_log_object.write_log_txt('not ok range')
+                                    # self.write_log_object.write_log_txt('not ok range')
 
         # -------- END ------------------------#
-        self.write_log_object.write_log_txt('-----------program at last(start)-------------')
+        # self.write_log_object.write_log_txt('-----------program at last(start)-------------')
         dpid = datapath.id # Switch 的 datapath id (獨一無二的 ID)
-        self.write_log_object.write_log_txt('dpid='+str(dpid))
+        # self.write_log_object.write_log_txt('dpid='+str(dpid))
         print('dpid='+str(dpid))
         # 如果 MAC 表內不曾儲存過這個 Switch 的 MAC，則幫他新增一個預設值
         # ex. mac_to_port = {'1': {'AA:BB:CC:DD:EE:FF': 2}}
@@ -1302,7 +1302,7 @@ class SimpleSwitch15(app_manager.RyuApp):
             #... 還沒做
         else:
             self.temp_switch_list.append(self.temp)
-        # self.write_log_object.write_log_txt('self.temp_switch_list='+str(self.temp_switch_list))
+        # # self.write_log_object.write_log_txt('self.temp_switch_list='+str(self.temp_switch_list))
         
         # self.logger.info("packet in %s %s %s %s", dpid, src, dst, in_port)
 
@@ -1323,9 +1323,10 @@ class SimpleSwitch15(app_manager.RyuApp):
         else:
             out_port = ofproto.OFPP_FLOOD
         self.delete_ip_to_port_table_lldp()
-            # self.write_log_object.write_log_txt('OFPP_FLOOD_out_port='+str(out_port))
-        # self.write_log_object.write_log_txt('self.mac_to_port='+str(self.mac_to_port))
-        self.write_log_object.write_log_txt('self.ip_to_port='+str(self.ip_to_port))
+        # # self.write_log_object.write_log_txt('OFPP_FLOOD_out_port='+str(out_port))
+        # # self.write_log_object.write_log_txt('self.mac_to_port='+str(self.mac_to_port))
+        # self.write_log_object.write_log_txt('self.ip_to_port='+str(self.ip_to_port))
+        print('self.ip_to_port='+str(self.ip_to_port))
         if pkt.get_protocols(ipv4.ipv4): #複寫 封包的下車出口
             self.ipv4=pkt.get_protocols(ipv4.ipv4)[0]
             self.ipv4_src = self.ipv4.src
@@ -1334,10 +1335,10 @@ class SimpleSwitch15(app_manager.RyuApp):
                 if self.ipv4_dst in self.ip_to_port[self.temp_switch_list[i]['dpid']]:
                     out_port = self.ip_to_port[self.temp_switch_list[i]['dpid']][self.ipv4_dst]
                     datapath=self.temp_switch_list[i]['datapath']
-                    self.write_log_object.write_log_txt('dpid=='+str(self.temp_switch_list[i]['dpid']))
-                    self.write_log_object.write_log_txt('self.ipv4_dst=='+str(self.ipv4_dst))
-                    self.write_log_object.write_log_txt('out_port=='+str(out_port))
-                    self.write_log_object.write_log_txt('datapath=='+str(datapath))
+                    # self.write_log_object.write_log_txt('dpid=='+str(self.temp_switch_list[i]['dpid']))
+                    # self.write_log_object.write_log_txt('self.ipv4_dst=='+str(self.ipv4_dst))
+                    # self.write_log_object.write_log_txt('out_port=='+str(out_port))
+                    # self.write_log_object.write_log_txt('datapath=='+str(datapath))
             
 
         # 把剛剛的 out_port 作成這次封包的處理動作
@@ -1368,7 +1369,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                 #     datapath.send_msg(out) #將封包傳送回ovs
         else:
             datapath.send_msg(out)#將封包傳送回ovs
-        self.write_log_object.write_log_txt('-----------program at last(end)-------------')
+        # self.write_log_object.write_log_txt('-----------program at last(end)-------------')
 
     
 

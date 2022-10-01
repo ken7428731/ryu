@@ -12,7 +12,14 @@
             {"model":"D","Start":0,"End":1},
             {"model":"X_Input","Start":0,"End":2}
           ]
-        }
+        },
+        { "IP":"192.168.3.30",
+            "Port":[502],
+            "PLC_Device_GPIO_Open_State":[
+              {"model":"Coil","Start":800,"End":802},
+              {"model":"X_Input","Start":800,"End":800}
+            ]
+          }
     ],
     "Facyory_Device_IP":[
         "192.168.3.66",
