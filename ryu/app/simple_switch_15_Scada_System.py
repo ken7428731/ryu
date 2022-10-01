@@ -34,7 +34,7 @@ from ryu.lib.packet import lldp
 
 from scada_log.write_log_txt import write_log
 from ryu.lib.packet import ipv4
-from ryu.lib.packet import tcp,udp
+from ryu.lib.packet import tcp,arp
 from SCADA_Device_Information.Load_SCADA_Information_Data import Load_Data
 from scada_log.epoch_to_datetime import epoch_to_datetime
 import threading
@@ -133,7 +133,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                             self.tempp['Range']=self.tempp['Range']+1
                     temp['PLC_Device'][i]['PLC_Device_GPIO_Open_State'][j]=self.tempp
             SCADA_Information_List=temp
-            self.write_log_object.write_log_txt('Load_SCADA_Information_before='+str(temp))
+            # self.write_log_object.write_log_txt('Load_SCADA_Information_before='+str(temp))
             if len(temp_SCADA_Information_List)>0:
                 if temp_SCADA_Information_List!=SCADA_Information_List:
                     self.Set_Device_Information_List()
@@ -273,7 +273,7 @@ class SimpleSwitch15(app_manager.RyuApp):
             else:
                 temp_SCADA_Information_List=copy.deepcopy(SCADA_Information_List)
             
-            self.write_log_object.write_log_txt('Load_SCADA_Information='+str(SCADA_Information_List))
+            # self.write_log_object.write_log_txt('Load_SCADA_Information='+str(SCADA_Information_List))
             temp_list=[]
             hub.sleep(1)
     def add_prottect_Device(self,prottect_ip=None):
@@ -635,17 +635,19 @@ class SimpleSwitch15(app_manager.RyuApp):
         pkt = packet.Packet()
         pkt.add_protocol(ethernet.ethernet(ethertype=ether_types.ETH_TYPE_LLDP,src=hw_addr ,dst=lldp.LLDP_MAC_NEAREST_BRIDGE))
 
-        #chassis_id = lldp.ChassisID(subtype=lldp.ChassisID.SUB_LOCALLY_ASSIGNED, chassis_id=str(datapath.id))
+        # chassis_id = lldp.ChassisID(subtype=lldp.ChassisID.SUB_LOCALLY_ASSIGNED, chassis_id=str(datapath.id))
         chassis_id = lldp.ChassisID(subtype=lldp.ChassisID.SUB_LOCALLY_ASSIGNED, chassis_id=str(datapath.id).encode('utf-8'))
-        #port_id = lldp.PortID(subtype=lldp.PortID.SUB_LOCALLY_ASSIGNED, port_id=str(port))
+        # port_id = lldp.PortID(subtype=lldp.PortID.SUB_LOCALLY_ASSIGNED, port_id=str(port_no))
         port_id = lldp.PortID(subtype=lldp.PortID.SUB_LOCALLY_ASSIGNED, port_id=str(port_no).encode('utf-8'))
         #port_id = lldp.PortID(subtype=lldp.PortID.SUB_LOCALLY_ASSIGNED, port_id=b'1/3')
-        ttl = lldp.TTL(ttl=1)
+        ttl = lldp.TTL(ttl=0)
         end = lldp.End()
         tlvs = (chassis_id,port_id,ttl,end)
         pkt.add_protocol(lldp.lldp(tlvs))
         pkt.serialize()
         # self.logger.info("packet-out %s" % pkt)
+        # print("packet-out "+str(pkt) +" ")
+        # self.write_log_object.write_log_txt('OvS_send_lldp_packet='+str(pkt))
         data = pkt.data
         match = ofp_parser.OFPMatch(in_port=ofproto.OFPP_CONTROLLER)
         actions = [ofp_parser.OFPActionOutput(port=port_no)]
@@ -667,25 +669,34 @@ class SimpleSwitch15(app_manager.RyuApp):
                 switch_topology.append(self.temp)        
         else:
             switch_topology.append(self.temp)
-        self.write_log_object.write_log_txt('switch_lldp_list='+str(switch_topology))
+        self.write_log_object.write_log_txt('switch_topology='+str(switch_topology))
     
     # Link two switch
     def switch_link(self,s_a,s_b):
+        self.write_log_object.write_log_txt(str(s_a) + '<--->' + str(s_b))
         return s_a + '<--->' + s_b
             
     def handle_lldp(self,dpid,in_port,lldp_pkt):
         lldp_dpid=lldp_pkt.tlvs[0].chassis_id
         lldp_in_port=lldp_pkt.tlvs[1].port_id
+        
+        
+        if lldp_dpid.decode('utf-8'):
+            lldp_dpid_str=lldp_dpid.decode('utf-8')
+        if lldp_in_port.decode('utf-8'):
+            lldp_in_port_str=lldp_in_port.decode('utf-8')
+
         self.write_log_object.write_log_txt('dpid='+str(dpid))
         self.write_log_object.write_log_txt('in_port='+str(in_port))
         self.write_log_object.write_log_txt('lldp_dpid='+str(lldp_dpid))
         self.write_log_object.write_log_txt('lldp_in_port='+str(lldp_in_port))
 
         self.switch_lldp_list(int(dpid),int(in_port))
-        self.switch_lldp_list(int(lldp_dpid.decode('utf-8')),int(lldp_in_port.decode('utf-8')))
+
+        self.switch_lldp_list(int(lldp_dpid_str),int(lldp_in_port_str))
 
         switch_a = 'switch'+str(dpid)+', port'+str(in_port)
-        switch_b = 'switch'+lldp_dpid.decode('utf-8')+', port'+lldp_in_port.decode('utf-8')
+        switch_b = 'switch'+lldp_dpid_str+', port'+lldp_in_port_str
         link = self.switch_link(switch_a,switch_b)
 
         # Check the switch link is existed
@@ -725,7 +736,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                     # print('add_flow='+str(mod))
                     datapath.send_msg(mod)# 把定義好的 FlowEntry 送給 Switch
             flow_entry_list=temp
-            self.write_log_object.write_log_txt('add_flow='+str(temp))
+            # self.write_log_object.write_log_txt('add_flow='+str(temp))
 
         if state=='rule':
             temp_flow_entry_list.append(str(mod))
@@ -764,6 +775,54 @@ class SimpleSwitch15(app_manager.RyuApp):
         # 把 Table-Miss FlowEntry 設定至 Switch，並指定優先權為 0 (最低)
         self.add_flow(datapath,table_id, 0, match,0, actions)
 
+    def _handle_arp(self, datapath, port, pkt_ethernet, pkt_arp):
+        if pkt_arp.opcode != arp.ARP_REQUEST:
+            return
+        pkt = packet.Packet()
+        pkt.add_protocol(ethernet.ethernet(ethertype=pkt_ethernet.ethertype,
+                                           dst=pkt_ethernet.src,
+                                           src=self.hw_addr))
+        pkt.add_protocol(arp.arp(opcode=arp.ARP_REPLY,
+                                 src_mac=self.hw_addr,
+                                 src_ip=self.ip_addr,
+                                 dst_mac=pkt_arp.src_mac,
+                                 dst_ip=pkt_arp.src_ip))
+        self._send_packet_to_port(datapath, port, pkt)
+
+
+    def _send_packet_to_port(self, datapath, port, pkt):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        pkt.serialize()
+        # self.logger.info("packet-out %s" % (pkt,))
+        data = pkt.data
+        actions = [parser.OFPActionOutput(port=port)]
+        out = parser.OFPPacketOut(datapath=datapath,
+                                  buffer_id=ofproto.OFP_NO_BUFFER,
+                                  in_port=ofproto.OFPP_CONTROLLER,
+                                  actions=actions,
+                                  data=data)
+        datapath.send_msg(out)
+
+    def delete_ip_to_port_table_lldp(self):
+        global switch_topology
+        self.temp_list=copy.deepcopy(self.ip_to_port)
+        # self.write_log_object.write_log_txt('is input delete_ip_to_port_table_lldp')
+        if len(switch_topology)>0 and len(self.temp_list)>0:
+            for i in range(len(switch_topology)):
+                if switch_topology[i]['dpid'] in self.temp_list:
+                    temp_switch_key_list=list(self.temp_list[switch_topology[i]['dpid']].keys())
+                    temp_switch_value_list=list(self.temp_list[switch_topology[i]['dpid']].values())
+                    self.ttemp_list=[]
+                    for j in range(len(temp_switch_value_list)):
+                        if switch_topology[i]['in_port']==temp_switch_value_list[j]:
+                            self.ttemp_list.append(temp_switch_key_list[j])
+                    for k in range(len(self.ttemp_list)):
+                        del self.temp_list[switch_topology[i]['dpid']][self.ttemp_list[k]]
+            self.ip_to_port=self.temp_list
+            self.write_log_object.write_log_txt('delete_ip_to_port_table_lldp_temp_list='+str(self.temp_list))
+        del self.temp_list
+
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
@@ -801,13 +860,20 @@ class SimpleSwitch15(app_manager.RyuApp):
             pkt_lldp = pkt.get_protocol(lldp.lldp)
             if pkt_lldp:
                 # self.handle_lldp(dpid,in_port,pkt_lldp)
-                print('aaaaa==')
+                # print('aaaaa==')
                 t = threading.Thread(target = self.handle_lldp(dpid, in_port, pkt_lldp))
-                t.start()
-                match = parser.OFPMatch(in_port=1)
-                # self.delete_flow()
+                t.start()                
                 return
-        
+        if eth.ethertype ==ether_types.ETH_TYPE_ARP:
+            pkt_arp=pkt.get_protocol(arp.arp)
+            if pkt_arp:
+                self.write_log_object.write_log_txt("arp_dpid="+str(dpid))
+                self.write_log_object.write_log_txt("arp_src_ip="+str(pkt_arp.src_ip))
+                self.write_log_object.write_log_txt("arp_dst_ip="+str(pkt_arp.dst_ip))
+                self.write_log_object.write_log_txt("arp_in_port="+str(in_port))
+                # self._handle_arp(datapath, in_port, eth, pkt_arp)
+                # return
+
         dst = eth.dst
         src = eth.src
 
@@ -835,36 +901,28 @@ class SimpleSwitch15(app_manager.RyuApp):
         #將資料寫到log檔
         if pkt.get_protocols(tcp.tcp):
             self.write_log_object.write_log_txt("-----------------")
-            self.write_log_object.write_log_txt("ev="+str(ev))
-            self.write_log_object.write_log_txt("ev.msg="+str(msg))
+            # self.write_log_object.write_log_txt("ev="+str(ev))
+            # self.write_log_object.write_log_txt("ev.msg="+str(msg))
             self.write_log_object.write_log_txt("packet in is table_id="+str(self.table_id))
             self.write_log_object.write_log_txt("packet_timestamp="+str(self.packet_timestamp))
             self.write_log_object.write_log_txt("packet_datetime="+str(self.packet_datetime))
             # self.write_log_object.write_log_txt("ev.msg.data="+str(self.data))
-            self.write_log_object.write_log_txt("datapath="+str(datapath))
-            self.write_log_object.write_log_txt("parser="+str(parser))
+            # self.write_log_object.write_log_txt("datapath="+str(datapath))
+            # self.write_log_object.write_log_txt("parser="+str(parser))
             self.write_log_object.write_log_txt("in_port="+str(in_port))
             self.write_log_object.write_log_txt("pkt="+str(pkt))
             # self.write_log_object.write_log_txt("pkt_len="+str(self.pkt.__len__()))
             self.write_log_object.write_log_txt("eth="+str(eth))
             self.write_log_object.write_log_txt("eth_dst="+str(dst))
             self.write_log_object.write_log_txt("eth_src="+str(src))
-            # if self.pkt.get_protocols(ipv4.ipv4):
-            self.write_log_object.write_log_txt("ipv4="+str(self.ipv4))
+            # self.write_log_object.write_log_txt("ipv4="+str(self.ipv4))
             self.write_log_object.write_log_txt("ipv4.src="+str(self.ipv4_src))
             self.write_log_object.write_log_txt("ipv4.dst="+str(self.ipv4_dst))
-            # if self.pkt.get_protocols(tcp.tcp):
-            self.write_log_object.write_log_txt("tcp="+str(self.tcp))
+            # self.write_log_object.write_log_txt("tcp="+str(self.tcp))
             self.write_log_object.write_log_txt("tcp_src_port="+str(self.tcp_src_port))
             self.write_log_object.write_log_txt("tcp_dst_port="+str(self.tcp_dst_port))
             self.write_log_object.write_log_txt("tcp_seq_number="+str(self.tcp_seq_number))
 
-
-
-
-        # if pkt.get_protocols(tcp.tcp):
-        #     print("tcp="+str(self.tcp))
-        #     print("tcp_seq_number="+str(self.tcp_seq_number))
         #--政策(Policy)_1-----------------------------------------------------#
         if pkt.get_protocols(ipv4.ipv4) and (self.table_id==RULE_1_TABLE or self.table_id==RULE_2_TABLE):
             self.temp={}
@@ -925,6 +983,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                             # self.Record_set_flow_entry(datapath,RULE_1_TABLE,self.priority,1,Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address'],actions=self.table_0_action_1)
                             self.add_flow(datapath,RULE_0_TABLE, self.priority, self.table_0_match_1, 0,self.table_0_action_1,state='rule') #在table 0比對到 往table 1送
                             self.Record_set_flow_entry(datapath,RULE_0_TABLE,self.priority,1,Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address'],actions=self.table_0_action_1)
+                            self.write_log_object.write_log_txt('dpid_set_block(policy_1)='+str(dpid))
                             self.write_log_object.write_log_txt('ip_is_block(policy_1)='+str(Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address']))
 
         #-----------(先將有送往PLC的封包且是TCP的送往 Packet_in)-------------------------------------------#
@@ -988,6 +1047,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                                     Factory_Block_Table[k]['block_state']='True'
                                     self.add_flow(datapath,RULE_1_TABLE, self.priority, self.table_1_match_1, 0,self.table_1_actions,state='rule') #在table 2比對到 往table 2送
                                     self.Record_set_flow_entry(datapath,RULE_1_TABLE,self.priority,2,Modbus_Tcp_Syn_Count_Table[i]['Src_Address'],actions=self.table_1_actions)
+                                    self.write_log_object.write_log_txt('dpid_set_block(policy_2)='+str(dpid))
                                     self.write_log_object.write_log_txt('ip_is_block(policy_2)='+str(Modbus_Tcp_Syn_Count_Table[i]['Src_Address']))
                                     
 
@@ -1089,7 +1149,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                         rule_3_set_state_list[k]['rule_3_set_all_packet_block']='True'
                     
         #-----------------計算modbus tcp 封包是否請求一樣(政策(Policy)_4)--------------------------#
-        if pkt.get_protocols(tcp.tcp) and pkt.__len__()==4 and self.tcp.has_flags(tcp.TCP_PSH,tcp.TCP_ACK) and (self.table_id==RULE_2_TABLE or self.table_id==RULE_3_TABLE):
+        if pkt.get_protocols(tcp.tcp) and pkt.__len__()==4 and self.tcp.has_flags(tcp.TCP_PSH,tcp.TCP_ACK) and (self.table_id==RULE_2_TABLE or self.table_id==RULE_3_TABLE) :
             mb=modbus_tcp.modbus_tcp()
             mb.get_modbus_tcp(self.tcp_src_port,self.tcp_dst_port,pkt.__getitem__(3))
             self.write_log_object.write_log_txt("****************")
@@ -1184,6 +1244,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                                         Factory_Block_Table[k]['block_state']='True'
                                         self.add_flow(datapath,RULE_3_TABLE, self.priority, self.table_3_match_1, 0,self.table_3_actions,state='rule') #在table 2比對到 往table 2送
                                         self.Record_set_flow_entry(datapath,RULE_3_TABLE,self.priority,4,modbus_tcp_function_list[i]['Src_Address'],actions=self.table_3_actions)
+                                        self.write_log_object.write_log_txt('dpid_set_block(policy_4)='+str(dpid))
                                         self.write_log_object.write_log_txt('ip_is_block(policy_4)='+str(modbus_tcp_function_list[i]['Src_Address']))
                                                         
                         modbus_tcp_function_list[i]['function_code']=[]
@@ -1213,12 +1274,13 @@ class SimpleSwitch15(app_manager.RyuApp):
                                             Factory_Block_Table[k]['block_state']='True'
                                             self.add_flow(datapath,RULE_3_TABLE, self.priority, self.table_3_match_2, 0,self.table_3_actions,state='rule') #在table 2比對到 往table 2送
                                             self.Record_set_flow_entry(datapath,RULE_3_TABLE,self.priority,5,modbus_tcp_function_data_list[i]['Src_Address'],actions=self.table_3_actions)
+                                            self.write_log_object.write_log_txt('dpid_set_block(policy_5)='+str(dpid))
                                             self.write_log_object.write_log_txt('ip_is_block(policy_5)='+str(modbus_tcp_function_data_list[i]['Src_Address']))
                                     print('not ok range')
                                     self.write_log_object.write_log_txt('not ok range')
 
         # -------- END ------------------------#
-        
+        self.write_log_object.write_log_txt('-----------program at last(start)-------------')
         dpid = datapath.id # Switch 的 datapath id (獨一無二的 ID)
         self.write_log_object.write_log_txt('dpid='+str(dpid))
         print('dpid='+str(dpid))
@@ -1240,11 +1302,8 @@ class SimpleSwitch15(app_manager.RyuApp):
             #... 還沒做
         else:
             self.temp_switch_list.append(self.temp)
-        self.write_log_object.write_log_txt('self.temp_switch_list='+str(self.temp_switch_list))
+        # self.write_log_object.write_log_txt('self.temp_switch_list='+str(self.temp_switch_list))
         
-        
-        
-
         # self.logger.info("packet in %s %s %s %s", dpid, src, dst, in_port)
 
         # learn a mac address to avoid FLOOD next time.
@@ -1257,14 +1316,15 @@ class SimpleSwitch15(app_manager.RyuApp):
             for i in range(len(switch_topology)):
                 if  (dpid==switch_topology[i]['dpid'])and (in_port!=switch_topology[i]['in_port']):
                     self.ip_to_port[dpid][self.ipv4_src]=in_port
-
         # 如果 目的端 MAC 在 mac_to_port 表中的話，就直接告訴 Switch 送到 out_port
         # 否則就請 Switch 用 Flooding 送出去
         if dst in self.mac_to_port[dpid]:
             out_port = self.mac_to_port[dpid][dst]
         else:
             out_port = ofproto.OFPP_FLOOD
-        self.write_log_object.write_log_txt('self.mac_to_port='+str(self.mac_to_port))
+        self.delete_ip_to_port_table_lldp()
+            # self.write_log_object.write_log_txt('OFPP_FLOOD_out_port='+str(out_port))
+        # self.write_log_object.write_log_txt('self.mac_to_port='+str(self.mac_to_port))
         self.write_log_object.write_log_txt('self.ip_to_port='+str(self.ip_to_port))
         if pkt.get_protocols(ipv4.ipv4): #複寫 封包的下車出口
             self.ipv4=pkt.get_protocols(ipv4.ipv4)[0]
@@ -1278,6 +1338,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                     self.write_log_object.write_log_txt('self.ipv4_dst=='+str(self.ipv4_dst))
                     self.write_log_object.write_log_txt('out_port=='+str(out_port))
                     self.write_log_object.write_log_txt('datapath=='+str(datapath))
+            
 
         # 把剛剛的 out_port 作成這次封包的處理動作
         actions = [parser.OFPActionOutput(out_port)]
@@ -1307,3 +1368,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                 #     datapath.send_msg(out) #將封包傳送回ovs
         else:
             datapath.send_msg(out)#將封包傳送回ovs
+        self.write_log_object.write_log_txt('-----------program at last(end)-------------')
+
+    
+
