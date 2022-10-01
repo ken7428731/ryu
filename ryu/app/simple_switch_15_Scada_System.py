@@ -623,8 +623,8 @@ class SimpleSwitch15(app_manager.RyuApp):
         dpid=datapath.id
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
-        self.write_log_object.write_log_txt('dpid='+str(dpid))
-        self.write_log_object.write_log_txt('ev.msg.body='+str(ev.msg.body))
+        # self.write_log_object.write_log_txt('dpid='+str(dpid))
+        # self.write_log_object.write_log_txt('ev.msg.body='+str(ev.msg.body))
         for stat in ev.msg.body:
             if stat.port_no < ofproto.OFPP_MAX:
                 # LLDP packet to controller
@@ -1061,7 +1061,7 @@ class SimpleSwitch15(app_manager.RyuApp):
             # self.add_flow(datapath,RULE_2_TABLE, 0, match,0, actions)
             self.default_match_flow(datapath,ofproto,parser,RULE_2_TABLE)
 
-        if pkt.get_protocols(tcp.tcp) and (self.table_id==RULE_1_TABLE or self.table_id==RULE_2_TABLE):
+        if pkt.get_protocols(tcp.tcp) and (self.table_id==RULE_1_TABLE or self.table_id==RULE_2_TABLE) and (self.tcp_src_port!=8080 and self.tcp_src_port!=9091 and self.tcp_dst_port!=8080 and self.tcp_dst_port!=9091):
             if len(Device_IP_List)>0:
                 for i in range(len(Device_IP_List)):
                     if self.ipv4_src==Device_IP_List[i] and self.tcp.has_flags(tcp.TCP_SYN):
@@ -1100,7 +1100,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                     for j in range(len(Modbus_Tcp_Syn_Information_Table)):
                         if Modbus_Tcp_Syn_Count_Table[i]['Src_Address']==Modbus_Tcp_Syn_Information_Table[j]['Src_Address'] and Modbus_Tcp_Syn_Count_Table[i]['Dst_Address']==Modbus_Tcp_Syn_Information_Table[j]['Dst_Address'] and Modbus_Tcp_Syn_Count_Table[i]['Src_Port']==Modbus_Tcp_Syn_Information_Table[j]['Src_Port']:
                             Modbus_Tcp_Syn_Count_Table[i]['Syn_Count']=Modbus_Tcp_Syn_Count_Table[i]['Syn_Count']+1
-                        if Modbus_Tcp_Syn_Count_Table[i]['Syn_Count']>2: #這邊次數還是怪怪的
+                        if Modbus_Tcp_Syn_Count_Table[i]['Syn_Count']>3: #這邊次數還是怪怪的
                             self.priority=20
                             self.table_1_match_1= parser.OFPMatch(eth_type=0x0800,ipv4_src=Modbus_Tcp_Syn_Count_Table[i]['Src_Address'])
                             self.table_1_actions=[]
@@ -1116,9 +1116,9 @@ class SimpleSwitch15(app_manager.RyuApp):
                 # self.write_log_object.write_log_txt('Modbus_Tcp_Syn_Count_Table='+str(Modbus_Tcp_Syn_Count_Table))
 
 
-         #--政策(Policy)_3 前資料儲存----------------------------------------------------------#
-        if pkt.get_protocols(tcp.tcp) and self.table_id==RULE_2_TABLE:
-            if len(SCADA_Information_List['PLC_Device'])>0:
+         #--政策(Policy)_3 前資料儲存----------------------------------------------------------# 有點怪怪的 沒有發輝出來的感覺
+        if pkt.get_protocols(tcp.tcp) and (self.table_id==RULE_1_TABLE or self.table_id==RULE_2_TABLE or self.table_id==RULE_3_TABLE) and (self.tcp_src_port!=8080 and self.tcp_src_port!=9091 and self.tcp_dst_port!=8080 and self.tcp_dst_port!=9091):
+            if len(SCADA_Information_List['PLC_Device'])>0 and (self.tcp.has_flags(tcp.TCP_SYN,tcp.TCP_ACK) or self.tcp.has_flags(tcp.TCP_FIN,tcp.TCP_ACK)):
                 for i in range(len(SCADA_Information_List['PLC_Device'])):
                     if self.ipv4_src==SCADA_Information_List['PLC_Device'][i]['IP']:
                         for j in range(len(SCADA_Information_List['PLC_Device'][i]['Port'])):
@@ -1211,7 +1211,7 @@ class SimpleSwitch15(app_manager.RyuApp):
                         rule_3_set_state_list[k]['rule_3_set_all_packet_block']='True'
                     
         #-----------------計算modbus tcp 封包是否請求一樣(政策(Policy)_4)--------------------------#
-        if pkt.get_protocols(tcp.tcp) and pkt.__len__()==4 and self.tcp.has_flags(tcp.TCP_PSH,tcp.TCP_ACK) and (self.table_id==RULE_2_TABLE or self.table_id==RULE_3_TABLE) :
+        if pkt.get_protocols(tcp.tcp) and pkt.__len__()==4 and self.tcp.has_flags(tcp.TCP_PSH,tcp.TCP_ACK) and (self.table_id==RULE_2_TABLE or self.table_id==RULE_3_TABLE) and (self.tcp_src_port!=8080 and self.tcp_src_port!=9091 and self.tcp_dst_port!=8080 and self.tcp_dst_port!=9091) :
             mb=modbus_tcp.modbus_tcp()
             mb.get_modbus_tcp(self.tcp_src_port,self.tcp_dst_port,pkt.__getitem__(3))
             # self.write_log_object.write_log_txt("****************")
@@ -1294,11 +1294,11 @@ class SimpleSwitch15(app_manager.RyuApp):
         #-----政策(Policy)_4 判斷 modbus tcp 重複 查詢是否連續3次以上----------------#      
             if len(modbus_tcp_function_list)>0:
                 for i in range(len(modbus_tcp_function_list)):
-                    if len(modbus_tcp_function_list[i]['function_code'])==4:
+                    if len(modbus_tcp_function_list[i]['function_code'])==5: #每5個去檢查
                         self.Moubus_Tcp_Function_Count_Table=Counter(modbus_tcp_function_list[i]['function_code'])
                         # self.write_log_object.write_log_txt('Moubus_Tcp_Function_Count_Table='+str(self.Moubus_Tcp_Function_Count_Table))
                         for j in range(15): # modbus tcp function有幾種
-                            if self.Moubus_Tcp_Function_Count_Table[j]>3: #這邊有調整(原本為2)
+                            if self.Moubus_Tcp_Function_Count_Table[j]>4: #這邊有調整(原本為2)
                                 self.priority=20
                                 self.table_3_match_1= parser.OFPMatch(eth_type=0x0800,ipv4_src=modbus_tcp_function_list[i]['Src_Address'])
                                 self.table_3_actions=[]
