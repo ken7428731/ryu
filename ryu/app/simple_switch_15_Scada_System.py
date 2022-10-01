@@ -888,6 +888,24 @@ class SimpleSwitch15(app_manager.RyuApp):
             # self.write_log_object.write_log_txt('delete_ip_to_port_table_lldp_temp_list='+str(self.temp_list))
         del self.temp_list
 
+    def save_ip_to_port_to_Factory_Block_Table(self):
+        global Factory_Block_Table
+        self.temp_list=copy.deepcopy(self.ip_to_port)
+        # print('self.temp_list='+str(self.temp_list))
+        if len(self.temp_list)>0:
+            temp_value_list=list(self.temp_list.values())
+            for i in range(len(temp_value_list)):
+                if len(temp_value_list[i])>0:
+                    str_Src_Address=list(temp_value_list[i].keys())[0]
+                    a=[temp for temp in Factory_Block_Table if temp['Src_Address']==str_Src_Address] #搜尋是否有在 Factory_Block_Table 裡面
+                    if len(a)<=0:
+                        ttemp2={}
+                        ttemp2['Src_Address']=str_Src_Address
+                        ttemp2['block_state']='False'
+                        Factory_Block_Table.append(ttemp2)
+        del self.temp_list
+        hub.sleep(0.5)
+
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
@@ -901,7 +919,7 @@ class SimpleSwitch15(app_manager.RyuApp):
         global modbus_tcp_function_list
         global modbus_tcp_function_data_list
         global rule_3_set_state_list
-
+        # print("ev.msg="+str(ev.msg))
         self.packet_timestamp=getattr(ev, 'timestamp', None) #取得 ev 裡面的 timestamp 。getattr 『取得』class 內定義變數的值
         # print('with timestamp= '+str(self.packet_timestamp))
         self.packet_datetime=self.datetime_object.get_datetime(self.packet_timestamp)
@@ -938,7 +956,6 @@ class SimpleSwitch15(app_manager.RyuApp):
         # if dst=='ff:ff:ff:ff:ff:ff': #這邊有點小問號
         #     return
         # ------- 測試 ---------------------------#
-        print('packet in is table_id='+str(self.table_id))
         if pkt.get_protocols(ipv4.ipv4):
             self.ipv4=pkt.get_protocols(ipv4.ipv4)[0]
             self.ipv4_src = self.ipv4.src
@@ -957,8 +974,11 @@ class SimpleSwitch15(app_manager.RyuApp):
             self.tcp_flags=self.tcp.bits
 
         if pkt.get_protocols(ipv4.ipv4):
+            print('-------------------start----------------------')
+            print('packet in is table_id='+str(self.table_id))
             print("ipv4_src="+str(self.ipv4_src))
             print("ipv4_dst="+str(self.ipv4_dst))
+            print('-------------------end----------------------')
 
         #將資料寫到log檔
         # if pkt.get_protocols(tcp.tcp):
@@ -990,17 +1010,17 @@ class SimpleSwitch15(app_manager.RyuApp):
             self.temp={}
             self.temp2={}
             self.temp3={}
-            self.temp['datapath']=datapath
-            self.temp['dpid']=dpid
+            # self.temp['datapath']=datapath
+            # self.temp['dpid']=dpid
             self.temp['Src_Address']=self.ipv4_src
             self.temp['Dst_Address']=self.ipv4_dst
             self.temp['In_Port']=in_port
-            self.temp2['datapath']=datapath
-            self.temp2['dpid']=dpid
+            # self.temp2['datapath']=datapath
+            # self.temp2['dpid']=dpid
             self.temp2['Src_Address']=self.ipv4_src
             self.temp2['block_state']='False'
-            self.temp3['datapath']=datapath
-            self.temp3['dpid']=dpid
+            # self.temp3['datapath']=datapath
+            # self.temp3['dpid']=dpid
             self.temp3['Src_Address']=self.ipv4_dst
             self.temp3['block_state']='False'
             if len(Modbus_Tcp_Packet_In_Information_Table)>0:
@@ -1024,32 +1044,32 @@ class SimpleSwitch15(app_manager.RyuApp):
                 Factory_Block_Table.append(self.temp2)
                 Factory_Block_Table.append(self.temp3)
 
-            print('----------Rule information------------')
+            # print('----------Rule information------------')
             # self.write_log_object.write_log_txt('----------Rule information------------')
-            print('Modbus_Tcp_Packet_In_Information_Table= '+str(Modbus_Tcp_Packet_In_Information_Table))
+            # print('Modbus_Tcp_Packet_In_Information_Table= '+str(Modbus_Tcp_Packet_In_Information_Table))
             # self.write_log_object.write_log_txt('Modbus_Tcp_Packet_In_Information_Table= '+str(Modbus_Tcp_Packet_In_Information_Table))
-            print('Factory_Block_Table= '+str(Factory_Block_Table))
+            # print('Factory_Block_Table= '+str(Factory_Block_Table))
             # self.write_log_object.write_log_txt('Factory_Block_Table= '+str(Factory_Block_Table))
-        #----- 政策(Policy)_1 判斷進來的封包是否在白名單裡面---------#
-        if len(Modbus_Tcp_Packet_In_Information_Table)>0 :
-            for i in range(len(Modbus_Tcp_Packet_In_Information_Table)):
-                a=[temp for temp in Device_IP_List if temp==Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address'] ] #搜尋是否有在 Modbus_Tcp_Packet_In_Information_Table裡面
-                if len(a)<=0:
-                    self.priority=20
-                    self.table_0_match_1= parser.OFPMatch(eth_type=0x0800,ipv4_src=Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address'])
-                    self.table_0_action_1=[]
-                    for j in range(len(Factory_Block_Table)):
-                        if (Factory_Block_Table[j]['Src_Address']==Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address'])and Factory_Block_Table[j]['block_state']=='False':
-                            Factory_Block_Table[j]['block_state']='True'
-                            # self.add_flow(datapath,RULE_1_TABLE, self.priority, self.table_0_match_1, 0,self.table_0_action_1,state='rule') #在table 0比對到 往table 1送
-                            # self.Record_set_flow_entry(datapath,RULE_1_TABLE,self.priority,1,Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address'],actions=self.table_0_action_1)
-                            self.add_flow(datapath,RULE_0_TABLE, self.priority, self.table_0_match_1, 0,self.table_0_action_1,state='rule') #在table 0比對到 往table 1送
-                            self.Record_set_flow_entry(datapath,RULE_0_TABLE,self.priority,1,Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address'],actions=self.table_0_action_1)
-                            # self.write_log_object.write_log_txt('dpid_set_block(policy_1)='+str(dpid))
-                            self.write_log_object.write_log_txt('ip_is_block(policy_1)='+str(Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address']))
+            #----- 政策(Policy)_1 判斷進來的封包是否在白名單裡面---------#
+            if len(Modbus_Tcp_Packet_In_Information_Table)>0 :
+                for i in range(len(Modbus_Tcp_Packet_In_Information_Table)):
+                    a=[temp for temp in Device_IP_List if temp==Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address'] ] #搜尋是否有在 Modbus_Tcp_Packet_In_Information_Table裡面
+                    if len(a)<=0:
+                        self.priority=20
+                        self.table_0_match_1= parser.OFPMatch(eth_type=0x0800,ipv4_src=Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address'])
+                        self.table_0_action_1=[]
+                        for j in range(len(Factory_Block_Table)):
+                            if (Factory_Block_Table[j]['Src_Address']==Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address'])and Factory_Block_Table[j]['block_state']=='False':
+                                Factory_Block_Table[j]['block_state']='True'
+                                # self.add_flow(datapath,RULE_1_TABLE, self.priority, self.table_0_match_1, 0,self.table_0_action_1,state='rule') #在table 0比對到 往table 1送
+                                # self.Record_set_flow_entry(datapath,RULE_1_TABLE,self.priority,1,Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address'],actions=self.table_0_action_1)
+                                self.add_flow(datapath,RULE_0_TABLE, self.priority, self.table_0_match_1, 0,self.table_0_action_1,state='rule') #在table 0比對到 往table 1送
+                                self.Record_set_flow_entry(datapath,RULE_0_TABLE,self.priority,1,Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address'],actions=self.table_0_action_1)
+                                # self.write_log_object.write_log_txt('dpid_set_block(policy_1)='+str(dpid))
+                                self.write_log_object.write_log_txt('ip_is_block(policy_1)='+str(Modbus_Tcp_Packet_In_Information_Table[i]['Src_Address']))
 
         #-----------(先將有送往PLC的封包且是TCP的送往 Packet_in)-------------------------------------------#
-        if len(SCADA_Information_List['PLC_Device'])>0 and pkt.get_protocols(tcp.tcp) and self.table_id==RULE_1_TABLE:
+        if len(SCADA_Information_List['PLC_Device'])>0 and self.table_id==RULE_1_TABLE:
             # for i in range(len(SCADA_Information_List['PLC_Device'])):
             self.priority=10
             self.table_1_match_1= parser.OFPMatch(eth_type=0x0800,ip_proto=0x6)
@@ -1061,7 +1081,8 @@ class SimpleSwitch15(app_manager.RyuApp):
             # self.add_flow(datapath,RULE_2_TABLE, 0, match,0, actions)
             self.default_match_flow(datapath,ofproto,parser,RULE_2_TABLE)
 
-        if pkt.get_protocols(tcp.tcp) and (self.table_id==RULE_1_TABLE or self.table_id==RULE_2_TABLE) and (self.tcp_src_port!=8080 and self.tcp_src_port!=9091 and self.tcp_dst_port!=8080 and self.tcp_dst_port!=9091):
+        # if pkt.get_protocols(tcp.tcp) and (self.table_id==RULE_1_TABLE or self.table_id==RULE_2_TABLE) and (self.tcp_src_port!=8080 and self.tcp_src_port!=9091 and self.tcp_src_port!=9092 and self.tcp_dst_port!=8080 and self.tcp_dst_port!=9091 and self.tcp_dst_port!=9092):
+        if pkt.get_protocols(tcp.tcp) and (self.table_id==RULE_1_TABLE or self.table_id==RULE_2_TABLE):            
             if len(Device_IP_List)>0:
                 for i in range(len(Device_IP_List)):
                     if self.ipv4_src==Device_IP_List[i] and self.tcp.has_flags(tcp.TCP_SYN):
@@ -1072,8 +1093,8 @@ class SimpleSwitch15(app_manager.RyuApp):
                         self.ttemp_date_list['Dst_Port']=self.tcp_dst_port
                         self.ttemp_date_list['Syn_Time']=self.packet_timestamp
                         Modbus_Tcp_Syn_Information_Table.append(self.ttemp_date_list)
-            # # self.write_log_object.write_log_txt('Modbus_Tcp_Syn_Information_Table='+str(Modbus_Tcp_Syn_Information_Table))
-
+            # self.write_log_object.write_log_txt('Modbus_Tcp_Syn_Information_Table='+str(Modbus_Tcp_Syn_Information_Table))
+            # print('Modbus_Tcp_Syn_Information_Table='+str(Modbus_Tcp_Syn_Information_Table))
             #-----計算syn數量-------------------#
             Modbus_Tcp_Syn_Count_Table=[]
             if len(Modbus_Tcp_Syn_Information_Table)>0:
@@ -1116,102 +1137,104 @@ class SimpleSwitch15(app_manager.RyuApp):
                 # self.write_log_object.write_log_txt('Modbus_Tcp_Syn_Count_Table='+str(Modbus_Tcp_Syn_Count_Table))
 
 
-         #--政策(Policy)_3 前資料儲存----------------------------------------------------------# 有點怪怪的 沒有發輝出來的感覺
-        if pkt.get_protocols(tcp.tcp) and (self.table_id==RULE_1_TABLE or self.table_id==RULE_2_TABLE or self.table_id==RULE_3_TABLE) and (self.tcp_src_port!=8080 and self.tcp_src_port!=9091 and self.tcp_dst_port!=8080 and self.tcp_dst_port!=9091):
-            if len(SCADA_Information_List['PLC_Device'])>0 and (self.tcp.has_flags(tcp.TCP_SYN,tcp.TCP_ACK) or self.tcp.has_flags(tcp.TCP_FIN,tcp.TCP_ACK)):
-                for i in range(len(SCADA_Information_List['PLC_Device'])):
-                    if self.ipv4_src==SCADA_Information_List['PLC_Device'][i]['IP']:
-                        for j in range(len(SCADA_Information_List['PLC_Device'][i]['Port'])):
-                            if self.tcp_src_port==SCADA_Information_List['PLC_Device'][i]['Port'][j] and self.tcp.has_flags(tcp.TCP_SYN,tcp.TCP_ACK):
-                                self.temp_date_list={}
-                                self.temp_date_list['datapath']=datapath
-                                self.temp_date_list['dpid']=dpid
-                                self.temp_date_list['Src_Address']=self.ipv4_dst
-                                self.temp_date_list['Dst_Address']=self.ipv4_src
-                                self.temp_date_list['Src_Port']=self.tcp_dst_port
-                                self.temp_date_list['Dst_Port']=self.tcp_src_port
-                                self.temp_date_list['Syn_Time']=self.packet_timestamp
-                                Modbus_Tcp_Connection_Information_Table.append(self.temp_date_list)
-                                self.temp_date_list['Set_flow_stat']='False'
-                                if rule_table_2_set_list!=Modbus_Tcp_Connection_Information_Table:
-                                    rule_table_2_set_list.append(self.temp_date_list)
-                                # self.write_log_object.write_log_txt("Modbus_Tcp_Connection_Information_Table(syn、ack)="+str(Modbus_Tcp_Connection_Information_Table))
-                                # self.write_log_object.write_log_txt("rule_table_2_set_list_before="+str(rule_table_2_set_list))
-                            elif self.tcp_src_port==SCADA_Information_List['PLC_Device'][i]['Port'][j] and self.tcp.has_flags(tcp.TCP_FIN,tcp.TCP_ACK):
-                                if len(Modbus_Tcp_Connection_Information_Table)>0:
-                                    Modbus_Tcp_Connection_Information_Table_len=len(Modbus_Tcp_Connection_Information_Table)
-                                    for k in range(Modbus_Tcp_Connection_Information_Table_len):
-                                        if Modbus_Tcp_Connection_Information_Table[k]['Src_Address']==self.ipv4_dst and Modbus_Tcp_Connection_Information_Table[k]['Dst_Address']==self.ipv4_src and Modbus_Tcp_Connection_Information_Table[k]['Src_Port']==self.tcp_dst_port and Modbus_Tcp_Connection_Information_Table[k]['Dst_Port']==self.tcp_src_port:
-                                            Modbus_Tcp_Connection_Information_Table[k]['Fin_Time']=self.packet_timestamp
-                                            Modbus_Tcp_Connection_Information_Table[k]['Duration_Time']=Modbus_Tcp_Connection_Information_Table[k]['Fin_Time']-Modbus_Tcp_Connection_Information_Table[k]['Syn_Time']
-                                    # self.write_log_object.write_log_txt("Modbus_Tcp_Connection_Information_Table(fin、ack)="+str(Modbus_Tcp_Connection_Information_Table))
-        
-        #------------------------------------------------------------------------#
-        #-------- 計算 tcp connect ip 數量----------------------------#
-        Modbus_Tcp_Connect_Count_Table=[]
-        if len(Modbus_Tcp_Connection_Information_Table)>0:
-            for i in range(len(Modbus_Tcp_Connection_Information_Table)):
-                self.temp_data={}
-                if len(Modbus_Tcp_Connect_Count_Table)>0:
-                    a=[temp for temp in Modbus_Tcp_Connect_Count_Table if temp['Src_Address']==Modbus_Tcp_Connection_Information_Table[i]['Src_Address'] and temp['Dst_Address']==Modbus_Tcp_Connection_Information_Table[i]['Dst_Address'] ] #搜尋是否有在 Modbus_Tcp_Connection_Information_Table裡面
-                    if len(a)<=0:
+            #--政策(Policy)_3 前資料儲存----------------------------------------------------------# 有點怪怪的 沒有發輝出來的感覺
+            # if pkt.get_protocols(tcp.tcp) and (self.table_id==RULE_1_TABLE or self.table_id==RULE_2_TABLE or self.table_id==RULE_3_TABLE) and (self.tcp_src_port!=8080 and self.tcp_src_port!=9091 and self.tcp_src_port!=9092 and self.tcp_dst_port!=8080 and self.tcp_dst_port!=9091 and self.tcp_dst_port!=9092):
+            if pkt.get_protocols(tcp.tcp) and (self.table_id==RULE_1_TABLE or self.table_id==RULE_2_TABLE or self.table_id==RULE_3_TABLE):
+                if len(SCADA_Information_List['PLC_Device'])>0 and (self.tcp.has_flags(tcp.TCP_SYN,tcp.TCP_ACK) or self.tcp.has_flags(tcp.TCP_FIN,tcp.TCP_ACK)):
+                    for i in range(len(SCADA_Information_List['PLC_Device'])):
+                        if self.ipv4_src==SCADA_Information_List['PLC_Device'][i]['IP']:
+                            for j in range(len(SCADA_Information_List['PLC_Device'][i]['Port'])):
+                                if self.tcp_src_port==SCADA_Information_List['PLC_Device'][i]['Port'][j] and self.tcp.has_flags(tcp.TCP_SYN,tcp.TCP_ACK):
+                                    self.temp_date_list={}
+                                    self.temp_date_list['datapath']=datapath
+                                    self.temp_date_list['dpid']=dpid
+                                    self.temp_date_list['Src_Address']=self.ipv4_dst
+                                    self.temp_date_list['Dst_Address']=self.ipv4_src
+                                    self.temp_date_list['Src_Port']=self.tcp_dst_port
+                                    self.temp_date_list['Dst_Port']=self.tcp_src_port
+                                    self.temp_date_list['Syn_Time']=self.packet_timestamp
+                                    Modbus_Tcp_Connection_Information_Table.append(self.temp_date_list)
+                                    self.temp_date_list['Set_flow_stat']='False'
+                                    if rule_table_2_set_list!=Modbus_Tcp_Connection_Information_Table:
+                                        rule_table_2_set_list.append(self.temp_date_list)
+                                    # self.write_log_object.write_log_txt("Modbus_Tcp_Connection_Information_Table(syn、ack)="+str(Modbus_Tcp_Connection_Information_Table))
+                                    # self.write_log_object.write_log_txt("rule_table_2_set_list_before="+str(rule_table_2_set_list))
+                                elif self.tcp_src_port==SCADA_Information_List['PLC_Device'][i]['Port'][j] and self.tcp.has_flags(tcp.TCP_FIN,tcp.TCP_ACK):
+                                    if len(Modbus_Tcp_Connection_Information_Table)>0:
+                                        Modbus_Tcp_Connection_Information_Table_len=len(Modbus_Tcp_Connection_Information_Table)
+                                        for k in range(Modbus_Tcp_Connection_Information_Table_len):
+                                            if Modbus_Tcp_Connection_Information_Table[k]['Src_Address']==self.ipv4_dst and Modbus_Tcp_Connection_Information_Table[k]['Dst_Address']==self.ipv4_src and Modbus_Tcp_Connection_Information_Table[k]['Src_Port']==self.tcp_dst_port and Modbus_Tcp_Connection_Information_Table[k]['Dst_Port']==self.tcp_src_port:
+                                                Modbus_Tcp_Connection_Information_Table[k]['Fin_Time']=self.packet_timestamp
+                                                Modbus_Tcp_Connection_Information_Table[k]['Duration_Time']=Modbus_Tcp_Connection_Information_Table[k]['Fin_Time']-Modbus_Tcp_Connection_Information_Table[k]['Syn_Time']
+                                        # self.write_log_object.write_log_txt("Modbus_Tcp_Connection_Information_Table(fin、ack)="+str(Modbus_Tcp_Connection_Information_Table))
+            
+            #------------------------------------------------------------------------#
+            #-------- 計算 tcp connect ip 數量----------------------------#
+            Modbus_Tcp_Connect_Count_Table=[]
+            if len(Modbus_Tcp_Connection_Information_Table)>0:
+                for i in range(len(Modbus_Tcp_Connection_Information_Table)):
+                    self.temp_data={}
+                    if len(Modbus_Tcp_Connect_Count_Table)>0:
+                        a=[temp for temp in Modbus_Tcp_Connect_Count_Table if temp['Src_Address']==Modbus_Tcp_Connection_Information_Table[i]['Src_Address'] and temp['Dst_Address']==Modbus_Tcp_Connection_Information_Table[i]['Dst_Address'] ] #搜尋是否有在 Modbus_Tcp_Connection_Information_Table裡面
+                        if len(a)<=0:
+                            self.temp_data['Src_Address']=Modbus_Tcp_Connection_Information_Table[i]['Src_Address']
+                            self.temp_data['Dst_Address']=Modbus_Tcp_Connection_Information_Table[i]['Dst_Address']        
+                            self.temp_data['Connect_Count']=0
+                            Modbus_Tcp_Connect_Count_Table.append(self.temp_data)
+                    else:
                         self.temp_data['Src_Address']=Modbus_Tcp_Connection_Information_Table[i]['Src_Address']
-                        self.temp_data['Dst_Address']=Modbus_Tcp_Connection_Information_Table[i]['Dst_Address']        
+                        self.temp_data['Dst_Address']=Modbus_Tcp_Connection_Information_Table[i]['Dst_Address']
                         self.temp_data['Connect_Count']=0
                         Modbus_Tcp_Connect_Count_Table.append(self.temp_data)
-                else:
-                    self.temp_data['Src_Address']=Modbus_Tcp_Connection_Information_Table[i]['Src_Address']
-                    self.temp_data['Dst_Address']=Modbus_Tcp_Connection_Information_Table[i]['Dst_Address']
-                    self.temp_data['Connect_Count']=0
-                    Modbus_Tcp_Connect_Count_Table.append(self.temp_data)
+                if len(Modbus_Tcp_Connect_Count_Table)>0:
+                    for i in range(len(Modbus_Tcp_Connect_Count_Table)):
+                        for j in range(len(Modbus_Tcp_Connection_Information_Table)):
+                            if Modbus_Tcp_Connect_Count_Table[i]['Src_Address']==Modbus_Tcp_Connection_Information_Table[j]['Src_Address'] and Modbus_Tcp_Connect_Count_Table[i]['Dst_Address']==Modbus_Tcp_Connection_Information_Table[j]['Dst_Address']:
+                                Modbus_Tcp_Connect_Count_Table[i]['Connect_Count']=Modbus_Tcp_Connect_Count_Table[i]['Connect_Count']+1
+
+                # print('Modbus_Tcp_Connect_Count_Table='+str(Modbus_Tcp_Connect_Count_Table))
+                # self.write_log_object.write_log_txt('Modbus_Tcp_Connect_Count_Table='+str(Modbus_Tcp_Connect_Count_Table))
+            
+            #------------- 政策(Policy)_3  判斷 使用 tcp connect ip 數量 去阻擋------------------------#
             if len(Modbus_Tcp_Connect_Count_Table)>0:
                 for i in range(len(Modbus_Tcp_Connect_Count_Table)):
-                    for j in range(len(Modbus_Tcp_Connection_Information_Table)):
-                        if Modbus_Tcp_Connect_Count_Table[i]['Src_Address']==Modbus_Tcp_Connection_Information_Table[j]['Src_Address'] and Modbus_Tcp_Connect_Count_Table[i]['Dst_Address']==Modbus_Tcp_Connection_Information_Table[j]['Dst_Address']:
-                            Modbus_Tcp_Connect_Count_Table[i]['Connect_Count']=Modbus_Tcp_Connect_Count_Table[i]['Connect_Count']+1
-
-            # print('Modbus_Tcp_Connect_Count_Table='+str(Modbus_Tcp_Connect_Count_Table))
-            # self.write_log_object.write_log_txt('Modbus_Tcp_Connect_Count_Table='+str(Modbus_Tcp_Connect_Count_Table))
-        
-        #------------- 政策(Policy)_3  判斷 使用 tcp connect ip 數量 去阻擋------------------------#
-        if len(Modbus_Tcp_Connect_Count_Table)>0:
-            for i in range(len(Modbus_Tcp_Connect_Count_Table)):
-                if (Modbus_Tcp_Connect_Count_Table[i]['Connect_Count']<=SCADA_Information_List['PLC_Allow_Connect_number'])and rule_table_2_set_list[i]['Set_flow_stat']=='False':
-                    for j in range(len(Modbus_Tcp_Connection_Information_Table)):
-                        # if Modbus_Tcp_Connect_Count_Table[i]['Src_Address']==Modbus_Tcp_Connection_Information_Table[j]['Src_Address'] and Modbus_Tcp_Connect_Count_Table[i]['Dst_Address']==Modbus_Tcp_Connection_Information_Table[j]['Dst_Address'] and Modbus_Tcp_Connect_Count_Table[i]['Src_Port']==Modbus_Tcp_Connection_Information_Table[j]['Src_Port'] and Modbus_Tcp_Connect_Count_Table[i]['Dst_Port']==Modbus_Tcp_Connection_Information_Table[j]['Dst_Port']:
-                        if Modbus_Tcp_Connect_Count_Table[i]['Src_Address']==Modbus_Tcp_Connection_Information_Table[j]['Src_Address'] and Modbus_Tcp_Connect_Count_Table[i]['Dst_Address']==Modbus_Tcp_Connection_Information_Table[j]['Dst_Address'] and rule_table_2_set_list[i]['Set_flow_stat']=='False' :
-                            self.priority=10
-                            self.table_2_match_1= parser.OFPMatch(eth_type=0x0800,ip_proto=0x6,ipv4_src=Modbus_Tcp_Connection_Information_Table[i]['Src_Address'],ipv4_dst=Modbus_Tcp_Connection_Information_Table[i]['Dst_Address'])
-                            self.table_2_match_2= parser.OFPMatch(eth_type=0x0800,ip_proto=0x6,ipv4_src=Modbus_Tcp_Connection_Information_Table[i]['Dst_Address'],ipv4_dst=Modbus_Tcp_Connection_Information_Table[i]['Src_Address'])
-                            self.table_2_inst_rule_1= [parser.OFPInstructionGotoTable(RULE_3_TABLE)] #Go to The Table 3
-                            self.add_flow(datapath,RULE_2_TABLE, self.priority, self.table_2_match_1, self.table_2_inst_rule_1,state='rule') #在table 2比對到 往table 3送
-                            self.add_flow(datapath,RULE_2_TABLE, self.priority, self.table_2_match_2, self.table_2_inst_rule_1,state='rule') #在table 2比對到 往table 3送
-                            self.Record_set_flow_entry(datapath,RULE_2_TABLE,self.priority,3,Modbus_Tcp_Connection_Information_Table[i]['Src_Address'],Modbus_Tcp_Connection_Information_Table[i]['Dst_Address'],inst=self.table_2_inst_rule_1)
-                            self.default_match_flow(datapath,ofproto,parser,RULE_3_TABLE)
-                            rule_table_2_set_list[i]['Set_flow_stat']='True'
-                            # self.write_log_object.write_log_txt("rule_table_2_set_list_after="+str(rule_table_2_set_list))
-                            self.temp={}
-                            self.temp['datapath']=datapath
-                            self.temp['dpid']=dpid
-                            self.temp['rule_3_set_all_packet_block']='False'
-                            if len(rule_3_set_state_list)>0:
-                                a=[temp for temp in rule_3_set_state_list['datapath'] if temp==datapath]
-                                if len(a)<=0:
-                                    rule_3_set_state_list.append(self.temp)    
-                            else:
-                                rule_3_set_state_list.append(self.temp)
-                            # self.write_log_object.write_log_txt("rule_3_set_state_list="+str(rule_3_set_state_list))
-            if len(rule_3_set_state_list)>0:
-                for k in range(len(rule_3_set_state_list)):
-                    if (len(Modbus_Tcp_Connect_Count_Table)>=SCADA_Information_List['PLC_Allow_Connect_number']) and (rule_3_set_state_list[k]['datapath']==datapath) and rule_3_set_state_list[k]['rule_3_set_all_packet_block']=='False':
-                        self.priority=5
-                        self.table_2_match_3= parser.OFPMatch()
-                        self.table_2_action_3=[]
-                        self.add_flow(datapath,RULE_2_TABLE, self.priority, self.table_2_match_3,0,self.table_2_action_3) #比對不到的全部丟掉
-                        rule_3_set_state_list[k]['rule_3_set_all_packet_block']='True'
+                    if (Modbus_Tcp_Connect_Count_Table[i]['Connect_Count']<=SCADA_Information_List['PLC_Allow_Connect_number'])and rule_table_2_set_list[i]['Set_flow_stat']=='False':
+                        for j in range(len(Modbus_Tcp_Connection_Information_Table)):
+                            # if Modbus_Tcp_Connect_Count_Table[i]['Src_Address']==Modbus_Tcp_Connection_Information_Table[j]['Src_Address'] and Modbus_Tcp_Connect_Count_Table[i]['Dst_Address']==Modbus_Tcp_Connection_Information_Table[j]['Dst_Address'] and Modbus_Tcp_Connect_Count_Table[i]['Src_Port']==Modbus_Tcp_Connection_Information_Table[j]['Src_Port'] and Modbus_Tcp_Connect_Count_Table[i]['Dst_Port']==Modbus_Tcp_Connection_Information_Table[j]['Dst_Port']:
+                            if Modbus_Tcp_Connect_Count_Table[i]['Src_Address']==Modbus_Tcp_Connection_Information_Table[j]['Src_Address'] and Modbus_Tcp_Connect_Count_Table[i]['Dst_Address']==Modbus_Tcp_Connection_Information_Table[j]['Dst_Address'] and rule_table_2_set_list[i]['Set_flow_stat']=='False' :
+                                self.priority=10
+                                self.table_2_match_1= parser.OFPMatch(eth_type=0x0800,ip_proto=0x6,ipv4_src=Modbus_Tcp_Connection_Information_Table[i]['Src_Address'],ipv4_dst=Modbus_Tcp_Connection_Information_Table[i]['Dst_Address'])
+                                self.table_2_match_2= parser.OFPMatch(eth_type=0x0800,ip_proto=0x6,ipv4_src=Modbus_Tcp_Connection_Information_Table[i]['Dst_Address'],ipv4_dst=Modbus_Tcp_Connection_Information_Table[i]['Src_Address'])
+                                self.table_2_inst_rule_1= [parser.OFPInstructionGotoTable(RULE_3_TABLE)] #Go to The Table 3
+                                self.add_flow(datapath,RULE_2_TABLE, self.priority, self.table_2_match_1, self.table_2_inst_rule_1,state='rule') #在table 2比對到 往table 3送
+                                self.add_flow(datapath,RULE_2_TABLE, self.priority, self.table_2_match_2, self.table_2_inst_rule_1,state='rule') #在table 2比對到 往table 3送
+                                self.Record_set_flow_entry(datapath,RULE_2_TABLE,self.priority,3,Modbus_Tcp_Connection_Information_Table[i]['Src_Address'],Modbus_Tcp_Connection_Information_Table[i]['Dst_Address'],inst=self.table_2_inst_rule_1)
+                                self.default_match_flow(datapath,ofproto,parser,RULE_3_TABLE)
+                                rule_table_2_set_list[i]['Set_flow_stat']='True'
+                                # self.write_log_object.write_log_txt("rule_table_2_set_list_after="+str(rule_table_2_set_list))
+                                self.temp={}
+                                self.temp['datapath']=datapath
+                                self.temp['dpid']=dpid
+                                self.temp['rule_3_set_all_packet_block']='False'
+                                if len(rule_3_set_state_list)>0:
+                                    a=[temp for temp in rule_3_set_state_list['datapath'] if temp==datapath]
+                                    if len(a)<=0:
+                                        rule_3_set_state_list.append(self.temp)    
+                                else:
+                                    rule_3_set_state_list.append(self.temp)
+                                # self.write_log_object.write_log_txt("rule_3_set_state_list="+str(rule_3_set_state_list))
+                if len(rule_3_set_state_list)>0:
+                    for k in range(len(rule_3_set_state_list)):
+                        if (len(Modbus_Tcp_Connect_Count_Table)>=SCADA_Information_List['PLC_Allow_Connect_number']) and (rule_3_set_state_list[k]['datapath']==datapath) and rule_3_set_state_list[k]['rule_3_set_all_packet_block']=='False':
+                            self.priority=5
+                            self.table_2_match_3= parser.OFPMatch()
+                            self.table_2_action_3=[]
+                            self.add_flow(datapath,RULE_2_TABLE, self.priority, self.table_2_match_3,0,self.table_2_action_3) #比對不到的全部丟掉
+                            rule_3_set_state_list[k]['rule_3_set_all_packet_block']='True'
                     
         #-----------------計算modbus tcp 封包是否請求一樣(政策(Policy)_4)--------------------------#
-        if pkt.get_protocols(tcp.tcp) and pkt.__len__()==4 and self.tcp.has_flags(tcp.TCP_PSH,tcp.TCP_ACK) and (self.table_id==RULE_2_TABLE or self.table_id==RULE_3_TABLE) and (self.tcp_src_port!=8080 and self.tcp_src_port!=9091 and self.tcp_dst_port!=8080 and self.tcp_dst_port!=9091) :
+        # if pkt.get_protocols(tcp.tcp) and pkt.__len__()==4 and self.tcp.has_flags(tcp.TCP_PSH,tcp.TCP_ACK) and (self.table_id==RULE_2_TABLE or self.table_id==RULE_3_TABLE) and (self.tcp_src_port!=8080 and self.tcp_src_port!=9091 and self.tcp_src_port!=9092 and self.tcp_dst_port!=8080 and self.tcp_dst_port!=9091 and self.tcp_dst_port!=9092) :
+        if pkt.get_protocols(tcp.tcp) and pkt.__len__()==4 and self.tcp.has_flags(tcp.TCP_PSH,tcp.TCP_ACK) and (self.table_id==RULE_2_TABLE or self.table_id==RULE_3_TABLE):
             mb=modbus_tcp.modbus_tcp()
             mb.get_modbus_tcp(self.tcp_src_port,self.tcp_dst_port,pkt.__getitem__(3))
             # self.write_log_object.write_log_txt("****************")
@@ -1346,7 +1369,7 @@ class SimpleSwitch15(app_manager.RyuApp):
         # self.write_log_object.write_log_txt('-----------program at last(start)-------------')
         dpid = datapath.id # Switch 的 datapath id (獨一無二的 ID)
         # self.write_log_object.write_log_txt('dpid='+str(dpid))
-        print('dpid='+str(dpid))
+        # print('dpid='+str(dpid))
         # 如果 MAC 表內不曾儲存過這個 Switch 的 MAC，則幫他新增一個預設值
         # ex. mac_to_port = {'1': {'AA:BB:CC:DD:EE:FF': 2}}
         #     但是目前 dpid 為 2 不存在，執行後 mac_to_port 會變成
@@ -1365,7 +1388,7 @@ class SimpleSwitch15(app_manager.RyuApp):
             #... 還沒做
         else:
             self.temp_switch_list.append(self.temp)
-        # # self.write_log_object.write_log_txt('self.temp_switch_list='+str(self.temp_switch_list))
+        # self.write_log_object.write_log_txt('self.temp_switch_list='+str(self.temp_switch_list))
         
         # self.logger.info("packet in %s %s %s %s", dpid, src, dst, in_port)
 
@@ -1386,6 +1409,11 @@ class SimpleSwitch15(app_manager.RyuApp):
         else:
             out_port = ofproto.OFPP_FLOOD
         self.delete_ip_to_port_table_lldp()
+        # self.save_ip_to_port_to_Factory_Block_Table_thread=hub.spawn(self.save_ip_to_port_to_Factory_Block_Table) #建立執行續(讀取設定檔)
+        # self.save_ip_to_port_to_Factory_Block_Table()
+
+
+
         # # self.write_log_object.write_log_txt('OFPP_FLOOD_out_port='+str(out_port))
         # # self.write_log_object.write_log_txt('self.mac_to_port='+str(self.mac_to_port))
         # self.write_log_object.write_log_txt('self.ip_to_port='+str(self.ip_to_port))
@@ -1398,13 +1426,22 @@ class SimpleSwitch15(app_manager.RyuApp):
                 if self.ipv4_dst in self.ip_to_port[self.temp_switch_list[i]['dpid']]:
                     out_port = self.ip_to_port[self.temp_switch_list[i]['dpid']][self.ipv4_dst]
                     datapath=self.temp_switch_list[i]['datapath']
+                    # self.write_log_object.write_log_txt('----------------------start--------------------------')
                     # self.write_log_object.write_log_txt('dpid=='+str(self.temp_switch_list[i]['dpid']))
                     # self.write_log_object.write_log_txt('self.ipv4_dst=='+str(self.ipv4_dst))
                     # self.write_log_object.write_log_txt('out_port=='+str(out_port))
                     # self.write_log_object.write_log_txt('datapath=='+str(datapath))
+                    # self.write_log_object.write_log_txt('-----------------------end--------------------------')
+                    # # print('----------------------start(down)--------------------------')
+                    # # print('dpid=='+str(self.temp_switch_list[i]['dpid']))
+                    # # print('self.ipv4_dst=='+str(self.ipv4_dst))
+                    # # print('out_port=='+str(out_port))
+                    # # print('datapath=='+str(datapath))
+                    # # print('-----------------------end--------------------------')
             
 
         # 把剛剛的 out_port 作成這次封包的處理動作
+        # parser = datapath.ofproto_parser
         actions = [parser.OFPActionOutput(out_port)]
 
         # 如果沒有讓 switch flooding，表示目的端 mac 有學習過
@@ -1424,6 +1461,8 @@ class SimpleSwitch15(app_manager.RyuApp):
         # 把要 Switch 執行的動作包裝成 Packet_out，並讓 Switch 執行動作
         out = parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id,
                                   match=match, actions=actions, data=data)
+        # print('out='+str(out))
+        print('Factory_Block_Table= '+str(Factory_Block_Table))
         if len(Factory_Block_Table)>0 and (self.table_id==RULE_1_TABLE or self.table_id==RULE_2_TABLE or self.table_id==RULE_3_TABLE):
             for i in range(len(Factory_Block_Table)):
                 if Factory_Block_Table[i]['Src_Address']==self.ipv4_src and Factory_Block_Table[i]['block_state']=='False': #如果封包進來的ip沒有被Factory_Block_Table 註記為阻擋狀態下
