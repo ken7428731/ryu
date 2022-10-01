@@ -973,12 +973,12 @@ class SimpleSwitch15(app_manager.RyuApp):
             self.tcp_ack=self.tcp.ack
             self.tcp_flags=self.tcp.bits
 
-        if pkt.get_protocols(ipv4.ipv4):
-            print('-------------------start----------------------')
-            print('packet in is table_id='+str(self.table_id))
-            print("ipv4_src="+str(self.ipv4_src))
-            print("ipv4_dst="+str(self.ipv4_dst))
-            print('-------------------end----------------------')
+        # if pkt.get_protocols(ipv4.ipv4):
+        #     print('-------------------start----------------------')
+        #     print('packet in is table_id='+str(self.table_id))
+        #     print("ipv4_src="+str(self.ipv4_src))
+        #     print("ipv4_dst="+str(self.ipv4_dst))
+        #     print('-------------------end----------------------')
 
         #將資料寫到log檔
         # if pkt.get_protocols(tcp.tcp):
@@ -1245,22 +1245,22 @@ class SimpleSwitch15(app_manager.RyuApp):
             for i in range(len(SCADA_Information_List['PLC_Device'])): 
                 for j in range(len(SCADA_Information_List['PLC_Device'][i]['Port'])):
                     if self.ipv4_dst==SCADA_Information_List['PLC_Device'][i]['IP'] and self.tcp_dst_port==SCADA_Information_List['PLC_Device'][i]['Port'][j]: #request
-                        print("*****request <<<<< *****")
-                        print("mb.fun_code="+str(mb.fun_code))
-                        # self.write_log_object.write_log_txt("*****request <<<<< *****")
-                        # self.write_log_object.write_log_txt("mb.fun_code="+str(mb.fun_code))
-                        if mb.fun_code==5:
-                            print("mb.reference_number="+str(mb.reference_number))
-                            print("mb.modbus_5_data="+str(mb.modbus_5_data))
-                            # self.write_log_object.write_log_txt("mb.reference_number="+str(mb.reference_number))
-                            # self.write_log_object.write_log_txt("mb.modbus_5_data="+str(mb.modbus_5_data))
-                        else:
-                            print("mb.reference_number="+str(mb.reference_number))
-                            print("mb.Bit_Count="+str(mb.Bit_Count))
-                            print("mb.data_lenth="+str(mb.data_lenth))
-                            # self.write_log_object.write_log_txt("mb.reference_number="+str(mb.reference_number))
-                            # self.write_log_object.write_log_txt("mb.Bit_Count="+str(mb.Bit_Count))                    
-                            # self.write_log_object.write_log_txt("mb.data_lenth="+str(mb.data_lenth))
+                        # print("*****request <<<<< *****")
+                        # print("mb.fun_code="+str(mb.fun_code))
+                        # # self.write_log_object.write_log_txt("*****request <<<<< *****")
+                        # # self.write_log_object.write_log_txt("mb.fun_code="+str(mb.fun_code))
+                        # if mb.fun_code==5:
+                        #     print("mb.reference_number="+str(mb.reference_number))
+                        #     print("mb.modbus_5_data="+str(mb.modbus_5_data))
+                        #     # self.write_log_object.write_log_txt("mb.reference_number="+str(mb.reference_number))
+                        #     # self.write_log_object.write_log_txt("mb.modbus_5_data="+str(mb.modbus_5_data))
+                        # else:
+                        #     print("mb.reference_number="+str(mb.reference_number))
+                        #     print("mb.Bit_Count="+str(mb.Bit_Count))
+                        #     print("mb.data_lenth="+str(mb.data_lenth))
+                        #     # self.write_log_object.write_log_txt("mb.reference_number="+str(mb.reference_number))
+                        #     # self.write_log_object.write_log_txt("mb.Bit_Count="+str(mb.Bit_Count))                    
+                        #     # self.write_log_object.write_log_txt("mb.data_lenth="+str(mb.data_lenth))
                         #---政策(Policy)_4 前資料儲存-------------------------------------------#
                         self.temp={}
                         self.temp['Src_Address']=self.ipv4_src
@@ -1299,21 +1299,21 @@ class SimpleSwitch15(app_manager.RyuApp):
                         else:
                             modbus_tcp_function_data_list.append(self.tempp)
                         # self.write_log_object.write_log_txt('modbus_tcp_function_data_list='+str(modbus_tcp_function_data_list))
-                    elif self.ipv4_src==SCADA_Information_List['PLC_Device'][i]['IP'] and self.tcp_src_port==SCADA_Information_List['PLC_Device'][i]['Port'][j]: #request
-                        print("*****response >>>> *****")
-                        print("mb.fun_code="+str(mb.fun_code))
-                        # self.write_log_object.write_log_txt("*****response >>>> *****")
-                        # self.write_log_object.write_log_txt("mb.fun_code="+str(mb.fun_code))
-                        if mb.fun_code==5:
-                            print("mb.reference_number="+str(mb.reference_number))
-                            print("mb.modbus_5_data="+str(mb.modbus_5_data))
-                            # self.write_log_object.write_log_txt("mb.reference_number="+str(mb.reference_number))
-                            # self.write_log_object.write_log_txt("mb.modbus_5_data="+str(mb.modbus_5_data))
-                        else:
-                            print("mb.byte_count="+str(mb.byte_count))
-                            print("mb.modbus_data="+str(mb.modbus_data))
-                            # self.write_log_object.write_log_txt("mb.byte_count="+str(mb.byte_count))
-                            # self.write_log_object.write_log_txt("mb.modbus_data="+str(mb.modbus_data))
+                    # elif self.ipv4_src==SCADA_Information_List['PLC_Device'][i]['IP'] and self.tcp_src_port==SCADA_Information_List['PLC_Device'][i]['Port'][j]: #request
+                    #     print("*****response >>>> *****")
+                    #     print("mb.fun_code="+str(mb.fun_code))
+                    #     # self.write_log_object.write_log_txt("*****response >>>> *****")
+                    #     # self.write_log_object.write_log_txt("mb.fun_code="+str(mb.fun_code))
+                    #     if mb.fun_code==5:
+                    #         print("mb.reference_number="+str(mb.reference_number))
+                    #         print("mb.modbus_5_data="+str(mb.modbus_5_data))
+                    #         # self.write_log_object.write_log_txt("mb.reference_number="+str(mb.reference_number))
+                    #         # self.write_log_object.write_log_txt("mb.modbus_5_data="+str(mb.modbus_5_data))
+                    #     else:
+                    #         print("mb.byte_count="+str(mb.byte_count))
+                    #         print("mb.modbus_data="+str(mb.modbus_data))
+                    #         # self.write_log_object.write_log_txt("mb.byte_count="+str(mb.byte_count))
+                    #         # self.write_log_object.write_log_txt("mb.modbus_data="+str(mb.modbus_data))
         #-----政策(Policy)_4 判斷 modbus tcp 重複 查詢是否連續3次以上----------------#      
             if len(modbus_tcp_function_list)>0:
                 for i in range(len(modbus_tcp_function_list)):
@@ -1417,7 +1417,7 @@ class SimpleSwitch15(app_manager.RyuApp):
         # # self.write_log_object.write_log_txt('OFPP_FLOOD_out_port='+str(out_port))
         # # self.write_log_object.write_log_txt('self.mac_to_port='+str(self.mac_to_port))
         # self.write_log_object.write_log_txt('self.ip_to_port='+str(self.ip_to_port))
-        print('self.ip_to_port='+str(self.ip_to_port))
+        # print('self.ip_to_port='+str(self.ip_to_port))
         if pkt.get_protocols(ipv4.ipv4): #複寫 封包的下車出口
             self.ipv4=pkt.get_protocols(ipv4.ipv4)[0]
             self.ipv4_src = self.ipv4.src
@@ -1462,7 +1462,7 @@ class SimpleSwitch15(app_manager.RyuApp):
         out = parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id,
                                   match=match, actions=actions, data=data)
         # print('out='+str(out))
-        print('Factory_Block_Table= '+str(Factory_Block_Table))
+        # print('Factory_Block_Table= '+str(Factory_Block_Table))
         if len(Factory_Block_Table)>0 and (self.table_id==RULE_1_TABLE or self.table_id==RULE_2_TABLE or self.table_id==RULE_3_TABLE):
             for i in range(len(Factory_Block_Table)):
                 if Factory_Block_Table[i]['Src_Address']==self.ipv4_src and Factory_Block_Table[i]['block_state']=='False': #如果封包進來的ip沒有被Factory_Block_Table 註記為阻擋狀態下
