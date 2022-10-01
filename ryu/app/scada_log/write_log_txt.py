@@ -3,7 +3,7 @@
 import os
 path ='/home/mnlab/Desktop/ryu/ryu/app/scada_log/'
 filepath = path+'log/'
-date_string='20220825_Scada_Containernet_no_attack'
+date_string='20220917_ryu_no_attack'
 filename= date_string+'_log.txt'
 class write_log():
     # def __init__(self):

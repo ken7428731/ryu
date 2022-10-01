@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # 可參考 這個網站: https://umodbus.readthedocs.io/en/latest/functions.html
-# 也可察看這個 https://stackoverflow.com/questions/53065365/how-can-i-send-with-struct-pack-type-over-modbus-tcp
+# 也可查看這個 https://stackoverflow.com/questions/53065365/how-can-i-send-with-struct-pack-type-over-modbus-tcp
 # 
 
 import struct
