@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 import os
 import json
-path ='/home/mnlab/Desktop/ryu/ryu/app/SCADA_Device_Information/'
+ryu_path = os.getcwd()
+path =ryu_path+'/ryu/app/SCADA_Device_Information/'
 filename=path+'Device_Information.json'
 class Load_Data():
     def Load_Information(self):

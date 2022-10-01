@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import os
-path ='/home/mnlab/Desktop/ryu/ryu/app/scada_log/'
+ryu_path = os.getcwd()
+path =ryu_path+'/ryu/app/scada_log/'
 filepath = path+'log/'
 date_string='20220917_ryu_no_attack'
 filename= date_string+'_log.txt'
