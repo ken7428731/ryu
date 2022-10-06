@@ -51,7 +51,7 @@ write_log_txt.py 為寫紀錄檔(log)功能。
 On Ubuntu(16.04 LTS or later)  
   `sudo apt install gcc python-dev libffi-dev libssl-dev libxml2-dev libxslt1-dev zlib1g-dev`  
 
-參考
+參考(Reference)
 =======
 1. ryu官網: https://ryu-sdn.org/
 2. ryu github: https://github.com/faucetsdn/ryu
