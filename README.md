@@ -53,10 +53,12 @@ On Ubuntu(16.04 LTS or later)
 
 參考(Reference)
 =======
-1. ryu官網: https://ryu-sdn.org/
-2. ryu github: https://github.com/faucetsdn/ryu
-3. https://stackoverflow.com/questions/49971882/delete-flows-matching-specific-cookie-openflow-1-3-5-spec-support-by-openvswit
-4. https://gist.github.com/aweimeow/d3662485aa224d298e671853aadb2d0f
-5. https://umodbus.readthedocs.io/en/latest/functions.html
-6. https://stackoverflow.com/questions/53065365/how-can-i-send-with-struct-pack-type-over-modbus-tcp
-7. Industrial Control Field Protection System Based on Software-defined Network Technology: https://hdl.handle.net/11296/3zh3g6
+- ryu官網: https://ryu-sdn.org/
+- ryu github: https://github.com/faucetsdn/ryu
+- https://stackoverflow.com/questions/49971882/delete-flows-matching-specific-cookie-openflow-1-3-5-spec-support-by-openvswit
+- https://gist.github.com/aweimeow/d3662485aa224d298e671853aadb2d0f
+- https://umodbus.readthedocs.io/en/latest/functions.html
+- https://stackoverflow.com/questions/53065365/how-can-i-send-with-struct-pack-type-over-modbus-tcp
+- Industrial Control Field Protection System Based on Software-defined Network Technology: https://hdl.handle.net/11296/3zh3g6
+- https://zh.wikipedia.org/zh-tw/VMware_Workstation
+- https://www.openvswitch.org/
